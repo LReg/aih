@@ -8,15 +8,15 @@ export const idTokenInterceptor: HttpInterceptorFn = (req, next) => {
   return auth.isAuthenticated().pipe(
     switchMap((isAuthenticated: boolean) => {
       if (isAuthenticated) {
-        return auth.getIdToken$();
+        return auth.getAccessToken();
       }
       return of(null);
     }),
-    switchMap((idToken: string | null) => {
-      if (idToken) {
+    switchMap((token: string | null) => {
+      if (token) {
         req = req.clone({
           setHeaders: {
-            Authorization: `Bearer ${idToken}`
+            Authorization: `Bearer ${token}`
           }
         });
       }

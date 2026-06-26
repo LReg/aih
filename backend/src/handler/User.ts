@@ -11,7 +11,7 @@ export const currentUser = async (req: Request, res: Response) => {
 export const handleGetAllUsers = async (req: Request, res: Response) => {
     const db = res.locals.db as Db;
     try {
-        const users = getAllUsers(db);
+        const users = await getAllUsers(db);
         res.json(users);
     } catch (err) {
         console.error('Error while fetching users:', err);

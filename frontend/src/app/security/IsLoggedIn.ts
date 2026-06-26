@@ -17,7 +17,7 @@ export const isLoggedIn: CanActivateFn = (
 ): MaybeAsync<GuardResult> => {
   const auth = inject(AuthService);
   const router = inject(Router);
-  if (!auth || !auth.isAuthenticated) {
+  if (!auth) {
     console.log('auth service not available');
     return router.createUrlTree(['/login']);
   }

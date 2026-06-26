@@ -1,3 +1,4 @@
+name: ${APP_NAME}
 services:
   traefik:
     image: traefik:3.1.2

@@ -48,10 +48,10 @@ elif [ "$1" == "up" ]; then
     docker compose -f docker/composeFiles/traefik.docker-compose.yml --env-file ./.env "$1" -d --force-recreate
   fi
   if [ "$2" == "auth" ]; then
-    docker compose -f docker/composeFiles/auth.docker-compose.yml --env-file ./.env "$1" -d --force-recreate --wait --wait-timeout 120
+    docker compose -f docker/composeFiles/auth.docker-compose.yml --env-file ./.env "$1" -d --force-recreate --remove-orphans --wait --wait-timeout 120
   fi
   if [ "$2" == "frontend" ] || [ "$2" == "backend" ] || [ "$2" == "db" ]; then
-    docker compose -f docker/composeFiles/app.docker-compose.yml --env-file ./.env "$1" "$2" -d --force-recreate
+    docker compose -f docker/composeFiles/app.docker-compose.yml --env-file ./.env "$1" "$2" -d --force-recreate --remove-orphans
   fi
 
 fi

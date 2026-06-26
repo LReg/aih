@@ -1,5 +1,4 @@
-version: '3'
-
+name: ${APP_NAME}-local
 services:
   db:
     image: mongo:latest

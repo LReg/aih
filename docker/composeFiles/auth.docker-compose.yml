@@ -1,3 +1,4 @@
+name: ${APP_NAME}
 services:
   authelia:
     image: authelia/authelia

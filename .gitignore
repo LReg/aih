@@ -30,3 +30,4 @@ docker/scripts/local-mongo-init.js
 docker/scripts/local-init.js
 backend/node_modules
 backend/express/node_modules
+backend/dist/

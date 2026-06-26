@@ -1,9 +1,8 @@
-FROM node:latest AS builder
+FROM node:22-alpine AS builder
 
 COPY . /myapp
 WORKDIR /myapp
-RUN npm install
-RUN npm run compile
+RUN npm ci --omit=dev && npm run compile
 EXPOSE 8080
 
 CMD ["npm", "start"]
