@@ -5,6 +5,7 @@ services:
     build:
       context: ../../backend
       dockerfile: Dockerfile
+    image: aih-backend
     environment:
       # maybe consider to not go via internet instead use the internal network
       - AUTH_DOMAIN=${AUTH_SUBDOMAIN}.${DOMAIN}.${D_ENDING}
@@ -53,6 +54,7 @@ services:
   frontend:
     container_name: ${APP_NAME}-frontend
     restart: always
+    image: aih-frontend
     build:
       context: ../../frontend
       dockerfile: Dockerfile
