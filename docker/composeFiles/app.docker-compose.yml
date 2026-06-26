@@ -10,6 +10,16 @@ services:
       - AUTH_DOMAIN=${AUTH_SUBDOMAIN}.${DOMAIN}.${D_ENDING}
       - OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
       - MONGO_URI=mongodb://${DB_USERNAME}:${DB_PASSWORD}@${APP_NAME}-mongodb:27017/public?authSource=public
+      - FRONTEND_URL=https://${APP_SUBDOMAIN}.${DOMAIN}.${D_ENDING}
+      - SEAWEEDFS_MASTER_URL=http://${APP_NAME}-seaweedfs-master:9333
+      - SEAWEEDFS_VOLUME_URL=http://${APP_NAME}-seaweedfs-volume:8080
+      - LLDAP_URL=${APP_NAME}-authelia-lldap
+      - LLDAP_ADMIN_USERNAME=admin
+      - LLDAP_ADMIN_PASSWORD=${LLDAP_ADMIN_PASS}
+      - CREDENTIAL_ENCRYPTION_KEY=${CREDENTIAL_ENCRYPTION_KEY}
+      - DOMAIN=${DOMAIN}
+      - D_ENDING=${D_ENDING}
+      - AI_HUB_API_KEY=${AI_HUB_API_KEY}
     networks:
         - TraefikNetwork
     labels:
@@ -59,6 +69,32 @@ services:
       - 'traefik.http.routers.${APP_NAME}-frontend.entrypoints=${TRAEFIK_ENTRYPOINT}'
       - 'traefik.http.routers.${APP_NAME}-frontend.tls=true'
       - 'traefik.http.routers.${APP_NAME}-frontend.tls.certresolver=${TRAEFIK_CERT_RESOLVER}'
+
+  seaweedfs-master:
+    image: chrislusf/seaweedfs:latest
+    container_name: ${APP_NAME}-seaweedfs-master
+    restart: always
+    networks:
+      - TraefikNetwork
+    expose:
+      - "9333"
+    command: "master -ip=seaweedfs-master -port=9333"
+    volumes:
+      - "${DOCKER_VOLUME_PATH}/volumes/seaweedfs/master:/data"
+
+  seaweedfs-volume:
+    image: chrislusf/seaweedfs:latest
+    container_name: ${APP_NAME}-seaweedfs-volume
+    restart: always
+    networks:
+      - TraefikNetwork
+    expose:
+      - "8080"
+    command: "volume -mserver=seaweedfs-master:9333 -port=8080 -ip=seaweedfs-volume"
+    volumes:
+      - "${DOCKER_VOLUME_PATH}/volumes/seaweedfs/volume:/data"
+    depends_on:
+      - seaweedfs-master
 
 
 networks:

@@ -13,6 +13,28 @@ services:
       - ../volumes/database:/data/db
       - ../scripts/mongo-init-local.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
 
+  seaweedfs-master:
+    image: chrislusf/seaweedfs:latest
+    container_name: ${APP_NAME}-seaweedfs-master
+    restart: always
+    expose:
+      - 9333
+    command: "master -ip=seaweedfs-master -port=9333"
+    volumes:
+      - ../volumes/seaweedfs1/master:/data
+
+  seaweedfs-volume:
+    image: chrislusf/seaweedfs:latest
+    container_name: ${APP_NAME}-seaweedfs-volume
+    restart: always
+    expose:
+      - 8080
+    command: "volume -mserver=seaweedfs-master:9333 -port=8080 -ip=seaweedfs-volume"
+    volumes:
+      - ../volumes/seaweedfs/volume1:/data
+    depends_on:
+      - seaweedfs-master
+      
   backend:
     pid: host
     container_name: ${APP_NAME}-backend
@@ -25,3 +47,9 @@ services:
       - AUTH_DOMAIN=${AUTH_DOMAIN}
       - OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
       - MONGO_URI=mongodb://${DB_USERNAME}:${DB_PASSWORD}@db:27017/public?authSource=public
+      - AI_HUB_API_KEY=${AI_HUB_API_KEY}
+      - SEAWEEDFS_MASTER_URL=http://seaweedfs-master:9333
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - CREDENTIAL_ENCRYPTION_KEY=${CREDENTIAL_ENCRYPTION_KEY}
+      - SEAWEEDFS_VOLUME_URL=http://seaweedfs-volume:8080
