@@ -1,4 +1,4 @@
-name: ${APP_NAME}
+name: ${APP_NAME}-app
 services:
   backend:
     pid: host
