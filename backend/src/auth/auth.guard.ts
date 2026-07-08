@@ -4,16 +4,15 @@ import {
   ExecutionContext,
   UnauthorizedException,
   InternalServerErrorException,
-  Inject,
 } from '@nestjs/common';
 import axios from 'axios';
-import { DB_PROVIDER, DbProvider } from '../database/database.module';
+import { DatabaseService } from '../database/database.service';
 import { User, Role } from '../types/User';
 import { upsertUser, getUserRole, setUserRole } from '../dao/UserDao';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(@Inject(DB_PROVIDER) private dbProvider: DbProvider) {}
+  constructor(private db: DatabaseService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     if (context.getType() !== 'http') {
@@ -38,7 +37,7 @@ export class AuthGuard implements CanActivate {
       if (!userInfo) {
         throw new UnauthorizedException('Invalid token');
       }
-      await this.storeUserInDB(userInfo);
+      await this.storeUserInDB(this.db.db, userInfo);
       request.user = {
         email: userInfo.email,
         name: userInfo.name,
@@ -53,12 +52,12 @@ export class AuthGuard implements CanActivate {
     }
   }
 
-  private async storeUserInDB(user: User) {
+  private async storeUserInDB(db: import('mongodb').Db, user: User) {
     try {
-      await upsertUser(this.dbProvider.db, user);
-      let role = await getUserRole(this.dbProvider.db, user.preferredUsername);
+      await upsertUser(db, user);
+      let role = await getUserRole(db, user.preferredUsername);
       if (role === Role.NOROLE) {
-        await setUserRole(this.dbProvider.db, user.preferredUsername, Role.USER);
+        await setUserRole(db, user.preferredUsername, Role.USER);
         role = Role.USER;
       }
       user.role = role;
