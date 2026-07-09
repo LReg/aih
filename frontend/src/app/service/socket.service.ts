@@ -21,9 +21,16 @@ export class SocketService implements OnDestroy {
   gameFound$: Observable<GameFoundEvent> = this.gameFoundSubject.asObservable();
   stateUpdate$: Observable<GameState> = this.stateUpdateSubject.asObservable();
 
+  private readonly socketPath = '/api/socket.io';
+
+  get socketHost(): string {
+    return environment.apiUrl.replace(/\/api$/, '');
+  }
+
   connectMatchmaking(userId: string) {
     if (this.matchSocket?.connected) return;
-    this.matchSocket = io(`${environment.apiUrl}/matchmaking`, {
+    this.matchSocket = io(`${this.socketHost}/matchmaking`, {
+      path: this.socketPath,
       transports: ['websocket'],
       auth: { userId },
     });
@@ -52,7 +59,7 @@ export class SocketService implements OnDestroy {
 
   connectGame() {
     if (this.gameSocket?.connected) return;
-    this.gameSocket = io(`${environment.apiUrl}/game`, { transports: ['websocket'] });
+    this.gameSocket = io(`${this.socketHost}/game`, { path: this.socketPath, transports: ['websocket'] });
 
     this.gameSocket.on('stateUpdate', (data: GameState) => {
       this.stateUpdateSubject.next(data);
