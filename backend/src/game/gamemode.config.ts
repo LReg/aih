@@ -13,6 +13,7 @@ export interface GamemodeConfig {
   startMinPlayers?: number;
   startTimerSeconds: number;
   tickRateMs: number;
+  maxDurationMs: number;
   mapWidth: number;
   mapHeight: number;
   barracksBuildTime: number;
@@ -27,8 +28,9 @@ export const GAMEMODE_CONFIGS: Record<Gamemode, GamemodeConfig> = {
   [Gamemode.Casual]: {
     maxPlayers: 5,
     startMinPlayers: 2,
-    startTimerSeconds: 15,
+    startTimerSeconds: 60,
     tickRateMs: 500,
+    maxDurationMs: 3600000,
     mapWidth: 100,
     mapHeight: 100,
     barracksBuildTime: 60,
@@ -48,8 +50,9 @@ export const GAMEMODE_CONFIGS: Record<Gamemode, GamemodeConfig> = {
   [Gamemode.Massive]: {
     maxPlayers: 10,
     startMinPlayers: 2,
-    startTimerSeconds: 15,
+    startTimerSeconds: 100,
     tickRateMs: 500,
+    maxDurationMs: 3600000,
     mapWidth: 400,
     mapHeight: 400,
     barracksBuildTime: 60,
@@ -69,8 +72,9 @@ export const GAMEMODE_CONFIGS: Record<Gamemode, GamemodeConfig> = {
   [Gamemode.Slow]: {
     maxPlayers: 5,
     startMinPlayers: 2,
-    startTimerSeconds: 15,
+    startTimerSeconds: 100,
     tickRateMs: 1500,
+    maxDurationMs: 3600000,
     mapWidth: 100,
     mapHeight: 100,
     barracksBuildTime: 60,

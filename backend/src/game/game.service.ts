@@ -26,6 +26,9 @@ export class GameService {
     const game = new Game(gamemode, new GameMap(config.mapWidth, config.mapHeight), players);
     this.spawnPlayers(game, players);
     game.state = 'running';
+    game.tick = 0;
+    game.startedAt = Date.now();
+    game.tickRateMs = config.tickRateMs;
     this.gameDao.saveGame(game);
     this.gameGateway.broadcastGameStart(game);
     this.startTick(game, config.tickRateMs);
@@ -121,7 +124,35 @@ export class GameService {
     this.processTimers(game);
 
     const config = GAMEMODE_CONFIGS[game.gamemode];
-    const winners = config.winCondition(game);
+    let winners: string[] = [];
+
+    if (game.tick > 10) {
+      winners = config.winCondition(game);
+    }
+
+    if (winners.length === 0 && config.maxDurationMs && game.tick > 10) {
+      const elapsed = Date.now() - game.startedAt;
+      if (elapsed >= config.maxDurationMs) {
+        this.logger.log(`time limit reached game=${game.id} elapsed=${elapsed}ms`);
+        const counts = new Map<string, number>();
+        for (const entity of game.map.entities.values()) {
+          if (entity.type === 'soldier') {
+            counts.set(entity.ownerId, (counts.get(entity.ownerId) || 0) + 1);
+          }
+        }
+        if (counts.size > 0) {
+          let maxCount = 0;
+          for (const [pid, count] of counts) {
+            if (count > maxCount) { maxCount = count; winners = [pid]; }
+            else if (count === maxCount) { winners.push(pid); }
+          }
+        } else {
+          winners = game.players;
+        }
+        this.logger.log(`time limit winner: soldiers=${JSON.stringify([...counts])} winners=[${winners}]`);
+      }
+    }
+
     if (winners.length > 0) {
       this.logger.log(`game finished game=${game.id} winners=${winners.join(',')}`);
       game.winners = winners;

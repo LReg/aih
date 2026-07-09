@@ -14,6 +14,10 @@ import { GameScene } from './scenes/game-scene';
   standalone: true,
   template: `
     <div class="game-layout">
+      <div class="top-bar">
+        <span class="game-timer">{{ elapsedTime }}</span>
+        <span class="game-tick">Tick {{ gameTick }}</span>
+      </div>
       <div #phaserContainer class="phaser-container"></div>
 
       @if (gameFinished) {
@@ -73,6 +77,22 @@ import { GameScene } from './scenes/game-scene';
       width: 100vw; height: 100vh;
       display: flex; flex-direction: column;
       background: #1a1a2e; overflow: hidden;
+    }
+    .top-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 16px;
+      background: #0d0d1a;
+      border-bottom: 1px solid #2a2a45;
+      min-height: 36px;
+    }
+    .game-timer {
+      font-size: 15px; font-weight: 600;
+      color: #e8e8f0; font-variant-numeric: tabular-nums;
+      letter-spacing: 0.5px;
+    }
+    .game-tick {
+      font-size: 12px; color: #7070a0;
+      font-variant-numeric: tabular-nums;
     }
     .phaser-container { flex: 1; min-height: 0; }
 
@@ -165,6 +185,10 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   gameFinished = false;
   winners: string[] = [];
   isWinner = false;
+  gameTick = 0;
+  elapsedTime = '00:00';
+  private tickRateMs = 500;
+  private startedAt = 0;
 
   get selectedSoldiers(): number {
     return this.selectedEntities.filter(e => e.type === 'soldier').length;
@@ -267,6 +291,10 @@ export class GameComponent implements AfterViewInit, OnDestroy {
 
   private onState(state: GameState) {
     console.log(`[GameComponent] state: tick=${state.tick} state=${state.state} entities=${state.map.entities.length}`);
+    this.gameTick = state.tick;
+    this.tickRateMs = state.tickRateMs;
+    this.startedAt = state.startedAt;
+    this.elapsedTime = this.formatElapsed(state.tick, state.tickRateMs);
     this.gameScene.updateFromState(state);
     if (state.state === 'finished') {
       this.gameFinished = true;
@@ -275,6 +303,18 @@ export class GameComponent implements AfterViewInit, OnDestroy {
       this.targetingMode = null;
       this.selectedEntities = [];
     }
+  }
+
+  private formatElapsed(ticks: number, rateMs: number): string {
+    const totalMs = ticks * rateMs;
+    const totalSec = Math.floor(totalMs / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    const h = Math.floor(m / 60);
+    if (h > 0) {
+      return `${String(h).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   }
 
   private onSelection(ids: string[]) {

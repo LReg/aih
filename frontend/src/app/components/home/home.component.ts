@@ -37,6 +37,8 @@ import { QueueStatusComponent } from '../queue-status/queue-status.component';
         <app-queue-status
           [queued]="queuedGamemode !== null"
           [seconds]="countdownSeconds"
+          [playerCount]="countdownPlayerCount"
+          [maxPlayers]="countdownMaxPlayers"
           (leave)="leaveQueue()"
         ></app-queue-status>
       </section>
@@ -77,9 +79,20 @@ import { QueueStatusComponent } from '../queue-status/queue-status.component';
 export class HomeComponent implements OnInit, OnDestroy {
   queuedGamemode: string | null = null;
   countdownSeconds = 0;
+  countdownPlayerCount = 0;
+  countdownMaxPlayers = 0;
   casualConfig: GamemodeConfig = { maxPlayers: 5, mapWidth: 100, mapHeight: 100, tickRateMs: 500 };
   massiveConfig: GamemodeConfig = { maxPlayers: 10, mapWidth: 400, mapHeight: 400, tickRateMs: 500 };
   slowConfig: GamemodeConfig = { maxPlayers: 5, mapWidth: 100, mapHeight: 100, tickRateMs: 1500 };
+
+  private getMaxPlayers(gamemode: string): number {
+    switch (gamemode) {
+      case 'casual': return this.casualConfig.maxPlayers;
+      case 'massive': return this.massiveConfig.maxPlayers;
+      case 'slow': return this.slowConfig.maxPlayers;
+      default: return 0;
+    }
+  }
 
   getQueueState(gamemode: string): QueueState {
     if (this.countdownSeconds > 0 && this.queuedGamemode === gamemode) return 'countdown';
@@ -105,14 +118,20 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.socket.countdownTick$.subscribe(e => {
         this.queuedGamemode = e.gamemode;
         this.countdownSeconds = e.seconds;
+        this.countdownPlayerCount = e.playerIds.length;
+        this.countdownMaxPlayers = this.getMaxPlayers(e.gamemode);
       }),
       this.socket.countdownCancelled$.subscribe(() => {
         this.queuedGamemode = null;
         this.countdownSeconds = 0;
+        this.countdownPlayerCount = 0;
+        this.countdownMaxPlayers = 0;
       }),
       this.socket.requeued$.subscribe(gamemode => {
         this.queuedGamemode = gamemode;
         this.countdownSeconds = 0;
+        this.countdownPlayerCount = 0;
+        this.countdownMaxPlayers = 0;
       }),
       this.socket.gameFound$.subscribe(e => {
         this.router.navigate(['/game', e.gameId]);
@@ -141,6 +160,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.api.queueLeave(this.queuedGamemode).subscribe(() => {
       this.queuedGamemode = null;
       this.countdownSeconds = 0;
+      this.countdownPlayerCount = 0;
+      this.countdownMaxPlayers = 0;
     });
   }
 

@@ -16,6 +16,8 @@ export class Game {
   readonly id: string = randomUUID();
   state: GameState = 'waiting';
   tick: number = 0;
+  startedAt: number = 0;
+  tickRateMs: number = 500;
   actionQueue: QueuedAction[] = [];
   winners: string[] = [];
 
@@ -31,6 +33,8 @@ export class Game {
       id: this.id,
       gamemode: this.gamemode,
       tick: this.tick,
+      startedAt: this.startedAt,
+      tickRateMs: this.tickRateMs,
       map: {
         width: this.map.width,
         height: this.map.height,

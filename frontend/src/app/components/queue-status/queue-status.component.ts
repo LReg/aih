@@ -11,6 +11,9 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
         @if (seconds > 0) {
           <p class="timer">Game starting in {{ seconds }}s</p>
         }
+        @if (playerCount > 0 && maxPlayers > 0) {
+          <p class="players">{{ playerCount }}/{{ maxPlayers }} players</p>
+        }
         <button class="leave-btn" (click)="leave.emit()">Leave Queue</button>
       </div>
     }
@@ -33,6 +36,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
     }
     @keyframes spin { to { transform: rotate(360deg); } }
     .timer { color: var(--primary); font-weight: 600; font-size: 18px; }
+    .players { color: var(--text-secondary); font-size: 14px; margin-top: 4px; }
     .leave-btn {
       margin-top: 16px;
       padding: 8px 24px;
@@ -48,5 +52,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 export class QueueStatusComponent {
   @Input() queued = false;
   @Input() seconds = 0;
+  @Input() playerCount = 0;
+  @Input() maxPlayers = 0;
   @Output() leave = new EventEmitter<void>();
 }
