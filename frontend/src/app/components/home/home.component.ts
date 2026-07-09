@@ -1,24 +1,156 @@
-import {Component, OnInit} from '@angular/core';
-import {AuthService} from "../../service/auth/auth.service";
-import {ApiService} from "../../service/api/api.service";
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { Subscription, first } from 'rxjs';
+import { GameApiService } from '../../service/game-api.service';
+import { SocketService } from '../../service/socket.service';
+import { AuthService } from '../../service/auth/auth.service';
+import { GamemodeSelectComponent, GamemodeConfig, QueueState } from '../gamemode-select/gamemode-select.component';
+import { QueueStatusComponent } from '../queue-status/queue-status.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [],
-  templateUrl: './home.component.html',
-  styleUrl: './home.component.scss'
-})
-export class HomeComponent implements OnInit{
-  constructor(public authService: AuthService, private apiService: ApiService) {}
+  imports: [GamemodeSelectComponent, QueueStatusComponent],
+  template: `
+    <div class="lobby">
+      <header class="lobby-header">
+        <h1>Strat</h1>
+        <button class="logout-btn" (click)="logout()">Logout</button>
+      </header>
 
-  ngOnInit(): void {
-    this.log();
+      <section class="content">
+        <app-gamemode-select
+          [state]="getQueueState('casual')" [config]="casualConfig"
+          label="Casual" gamemode="casual"
+          (select)="joinQueue($event)"></app-gamemode-select>
+
+        <app-gamemode-select
+          [state]="getQueueState('massive')" [config]="massiveConfig"
+          label="Massive" gamemode="massive"
+          (select)="joinQueue($event)"></app-gamemode-select>
+
+        <app-gamemode-select
+          [state]="getQueueState('slow')" [config]="slowConfig"
+          label="Slow" gamemode="slow"
+          (select)="joinQueue($event)"></app-gamemode-select>
+
+        <app-queue-status
+          [queued]="queuedGamemode !== null"
+          [seconds]="countdownSeconds"
+          (leave)="leaveQueue()"
+        ></app-queue-status>
+      </section>
+    </div>
+  `,
+  styles: [`
+    .lobby {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 24px 16px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .lobby-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+    h1 { margin: 0; font-size: 28px; color: var(--text-primary); }
+    .logout-btn {
+      padding: 6px 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+    .logout-btn:hover { color: var(--danger); border-color: var(--danger); }
+    .content {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+  `]
+})
+export class HomeComponent implements OnInit, OnDestroy {
+  queuedGamemode: string | null = null;
+  countdownSeconds = 0;
+  casualConfig: GamemodeConfig = { maxPlayers: 5, mapWidth: 100, mapHeight: 100, tickRateMs: 500 };
+  massiveConfig: GamemodeConfig = { maxPlayers: 10, mapWidth: 400, mapHeight: 400, tickRateMs: 500 };
+  slowConfig: GamemodeConfig = { maxPlayers: 5, mapWidth: 100, mapHeight: 100, tickRateMs: 1500 };
+
+  getQueueState(gamemode: string): QueueState {
+    if (this.countdownSeconds > 0 && this.queuedGamemode === gamemode) return 'countdown';
+    if (this.queuedGamemode === gamemode) return 'queued';
+    return 'idle';
   }
 
-  public log() {
-    this.authService.getAccessToken().subscribe(console.log);
-    this.apiService.currentUser$().subscribe(console.log);
-    this.authService.isAuthenticated().subscribe(console.log);
+  private subs: Subscription[] = [];
+
+  constructor(
+    public authService: AuthService,
+    private api: GameApiService,
+    private socket: SocketService,
+    private router: Router,
+  ) {}
+
+  ngOnInit() {
+    this.subs.push(
+      this.authService.userData$().pipe(first()).subscribe(data => {
+        const userId = (data['preferred_username'] as string) || '';
+        this.socket.connectMatchmaking(userId);
+      }),
+      this.socket.countdownTick$.subscribe(e => {
+        this.queuedGamemode = e.gamemode;
+        this.countdownSeconds = e.seconds;
+      }),
+      this.socket.countdownCancelled$.subscribe(() => {
+        this.queuedGamemode = null;
+        this.countdownSeconds = 0;
+      }),
+      this.socket.requeued$.subscribe(gamemode => {
+        this.queuedGamemode = gamemode;
+        this.countdownSeconds = 0;
+      }),
+      this.socket.gameFound$.subscribe(e => {
+        this.router.navigate(['/game', e.gameId]);
+      }),
+    );
+  }
+
+  joinQueue(gamemode: string) {
+    if (this.queuedGamemode && this.queuedGamemode !== gamemode) {
+      this.api.queueLeave(this.queuedGamemode).subscribe(() => {
+        this.queuedGamemode = null;
+        this.countdownSeconds = 0;
+        this.api.queueJoin(gamemode).subscribe(() => {
+          this.queuedGamemode = gamemode;
+        });
+      });
+    } else if (!this.queuedGamemode) {
+      this.api.queueJoin(gamemode).subscribe(() => {
+        this.queuedGamemode = gamemode;
+      });
+    }
+  }
+
+  leaveQueue() {
+    if (!this.queuedGamemode) return;
+    this.api.queueLeave(this.queuedGamemode).subscribe(() => {
+      this.queuedGamemode = null;
+      this.countdownSeconds = 0;
+    });
+  }
+
+  logout() {
+    this.socket.disconnectMatchmaking();
+    this.authService.logout();
+  }
+
+  ngOnDestroy() {
+    this.socket.disconnectMatchmaking();
+    this.subs.forEach(s => s.unsubscribe());
   }
 }

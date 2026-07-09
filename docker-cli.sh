@@ -42,15 +42,17 @@ elif [ "$1" == "down" ] || [ "$1" == "build" ]; then
   fi
 
 elif [ "$1" == "up" ]; then
-  # up with some extra tags
-
+  # down first to ensure fresh containers
   if [ "$2" == "traefik" ]; then
+    docker compose -f docker/composeFiles/traefik.docker-compose.yml --env-file ./.env down
     docker compose -f docker/composeFiles/traefik.docker-compose.yml --env-file ./.env "$1" -d --force-recreate
   fi
   if [ "$2" == "auth" ]; then
+    docker compose -f docker/composeFiles/auth.docker-compose.yml --env-file ./.env down
     docker compose -f docker/composeFiles/auth.docker-compose.yml --env-file ./.env "$1" -d --force-recreate --remove-orphans --wait --wait-timeout 120
   fi
   if [ "$2" == "frontend" ] || [ "$2" == "backend" ] || [ "$2" == "db" ]; then
+    docker compose -f docker/composeFiles/app.docker-compose.yml --env-file ./.env down "$2"
     docker compose -f docker/composeFiles/app.docker-compose.yml --env-file ./.env "$1" "$2" -d --force-recreate --remove-orphans
   fi
 

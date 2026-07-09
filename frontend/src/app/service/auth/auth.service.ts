@@ -34,7 +34,8 @@ export class AuthService {
       .subscribe((result) => console.log(result));
   }
 
-  public identityClaims() {
+  public userData$(): Observable<Record<string, unknown>> {
+    return this.oidcSecurityService.getUserData();
   }
 
   public getAccessToken(): Observable<string> {

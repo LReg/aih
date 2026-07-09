@@ -4,9 +4,12 @@ import { DatabaseModule } from './database/database.module';
 import { AuthGuard } from './auth/auth.guard';
 import { UserModule } from './user/user.module';
 import { SocketModule } from './socket/socket.module';
+import { GameModule } from './game/game.module';
+import { QueueModule } from './queue/queue.module';
+import { MatchmakingModule } from './matchmaking/matchmaking.module';
 
 @Module({
-  imports: [DatabaseModule, UserModule, SocketModule],
+  imports: [DatabaseModule, UserModule, SocketModule, GameModule, QueueModule, MatchmakingModule],
   providers: [
     {
       provide: APP_GUARD,
