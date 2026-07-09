@@ -9,6 +9,7 @@ RUN npm ci
 FROM build-deps AS build
 WORKDIR /build
 COPY --from=build-deps /data/node_modules ./node_modules
+COPY --from=build-deps /data/package.json /data/package-lock.json /data/tsconfig.json /data/tsconfig.app.json /data/angular.json ./
 COPY src ./src
 COPY public ./public
 ARG BASE_URL
