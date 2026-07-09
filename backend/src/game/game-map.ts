@@ -4,15 +4,20 @@ export type EntityType = 'soldier' | 'barracks';
 
 export type EntityState =
   | { status: 'idle' }
-  | { status: 'moving'; path: { x: number; y: number }[] }
-  | { status: 'moving-to-attack'; targetId: string; path: { x: number; y: number }[] }
-  | { status: 'attacking'; targetId: string }
+  | { status: 'moving'; targetX: number; targetY: number }
+  | { status: 'attacking'; targetX: number; targetY: number }
   | { status: 'building-barracks'; startedAtTick: number }
   | { status: 'building'; startedAtTick: number }
   | { status: 'ready'; lastProducedAtTick: number };
 
+export enum TileType {
+  Grass = 'grass',
+  Water = 'water',
+  Mountain = 'mountain',
+}
+
 export interface Tile {
-  terrain: string;
+  terrain: TileType;
   entityId?: string;
 }
 
@@ -165,7 +170,7 @@ export class GameMap {
   private fillGrass() {
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
-        this.tiles.set(`${x},${y}`, { terrain: 'grass' });
+        this.tiles.set(`${x},${y}`, { terrain: TileType.Grass });
       }
     }
   }

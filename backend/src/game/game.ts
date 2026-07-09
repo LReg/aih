@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { GameMap } from './game-map';
+import { GameMap, TileType } from './game-map';
 import { Gamemode } from './gamemode.config';
 
 export type GameState = 'waiting' | 'countdown' | 'running' | 'finished';
@@ -40,7 +40,7 @@ export class Game {
       map: {
         width: this.map.width,
         height: this.map.height,
-        tiles: Array.from(this.map.tiles.entries()),
+        tiles: Array.from(this.map.tiles.entries()).filter(([, t]) => t.terrain !== TileType.Grass),
         entities: Array.from(this.map.entities.entries()),
       },
       players: this.players,

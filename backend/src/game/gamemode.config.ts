@@ -1,4 +1,6 @@
 import type { Game } from './game';
+import { lastSoldierStandingWinCondition } from './winConditions/lastSoldierStanding.winCondition';
+import { timeLimitWinCondition } from './winConditions/timeLimit.winCondition';
 
 export enum Gamemode {
   Casual = 'casual',
@@ -7,6 +9,16 @@ export enum Gamemode {
 }
 
 export type WinCondition = (game: Game) => string[];
+
+function composeWinConditions(...conditions: WinCondition[]): WinCondition {
+  return (game) => {
+    for (const condition of conditions) {
+      const winners = condition(game);
+      if (winners.length > 0) return winners;
+    }
+    return [];
+  };
+}
 
 export interface GamemodeConfig {
   maxPlayers: number;
@@ -26,6 +38,11 @@ export interface GamemodeConfig {
   winCondition: WinCondition;
 }
 
+const DEFAULT_WIN_CONDITION = composeWinConditions(
+  lastSoldierStandingWinCondition,
+  timeLimitWinCondition,
+);
+
 export const GAMEMODE_CONFIGS: Record<Gamemode, GamemodeConfig> = {
   [Gamemode.Casual]: {
     maxPlayers: 5,
@@ -42,14 +59,7 @@ export const GAMEMODE_CONFIGS: Record<Gamemode, GamemodeConfig> = {
     soldierDetectRange: 5,
     soldierAttackBarracksKillChance: 0.25,
     peaceDurationMs: 30000,
-    winCondition: (game) => {
-      const alive = new Set<string>();
-      for (const entity of game.map.entities.values()) {
-        if (entity.type === 'soldier') alive.add(entity.ownerId);
-      }
-      if (alive.size === 1) return [alive.values().next().value as string];
-      return [];
-    },
+    winCondition: DEFAULT_WIN_CONDITION,
   },
   [Gamemode.Massive]: {
     maxPlayers: 10,
@@ -66,14 +76,7 @@ export const GAMEMODE_CONFIGS: Record<Gamemode, GamemodeConfig> = {
     soldierDetectRange: 5,
     soldierAttackBarracksKillChance: 0.25,
     peaceDurationMs: 30000,
-    winCondition: (game) => {
-      const alive = new Set<string>();
-      for (const entity of game.map.entities.values()) {
-        if (entity.type === 'soldier') alive.add(entity.ownerId);
-      }
-      if (alive.size === 1) return [alive.values().next().value as string];
-      return [];
-    },
+    winCondition: DEFAULT_WIN_CONDITION,
   },
   [Gamemode.Slow]: {
     maxPlayers: 5,
@@ -90,13 +93,6 @@ export const GAMEMODE_CONFIGS: Record<Gamemode, GamemodeConfig> = {
     soldierDetectRange: 5,
     soldierAttackBarracksKillChance: 0.25,
     peaceDurationMs: 60000,
-    winCondition: (game) => {
-      const alive = new Set<string>();
-      for (const entity of game.map.entities.values()) {
-        if (entity.type === 'soldier') alive.add(entity.ownerId);
-      }
-      if (alive.size === 1) return [alive.values().next().value as string];
-      return [];
-    },
+    winCondition: DEFAULT_WIN_CONDITION,
   },
 };

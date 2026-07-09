@@ -1,13 +1,18 @@
+export enum TileType {
+  Grass = 'grass',
+  Water = 'water',
+  Mountain = 'mountain',
+}
+
 export interface Tile {
-  terrain: string;
+  terrain: TileType;
   entityId?: string;
 }
 
 export type EntityState =
   | { status: 'idle' }
-  | { status: 'moving'; path: { x: number; y: number }[] }
-  | { status: 'moving-to-attack'; targetId: string; path: { x: number; y: number }[] }
-  | { status: 'attacking'; targetId: string }
+  | { status: 'moving'; targetX: number; targetY: number }
+  | { status: 'attacking'; targetX: number; targetY: number }
   | { status: 'building-barracks'; startedAtTick: number }
   | { status: 'building'; startedAtTick: number }
   | { status: 'ready'; lastProducedAtTick: number };

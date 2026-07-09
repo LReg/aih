@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Subject } from 'rxjs';
-import { GameState, Entity } from '../../../types/game.types';
+import { GameState, Entity, TileType } from '../../../types/game.types';
 
 const TILE_SIZE = 32;
 
@@ -217,7 +217,7 @@ export class GameScene extends Phaser.Scene {
       if (entity.ownerId !== this.playerId) continue;
       if (entity.type !== 'soldier' || entity.state.status !== 'building-barracks') continue;
       const cx = entity.x * TILE_SIZE + TILE_SIZE / 2;
-      const cy = entity.y * TILE_SIZE - 4;
+      const cy = entity.y * TILE_SIZE + TILE_SIZE / 2;
       this.busyGraphics.fillStyle(0xff8800, 0.9);
       this.busyGraphics.fillCircle(cx, cy, 4);
     }
@@ -229,7 +229,7 @@ export class GameScene extends Phaser.Scene {
     for (const [, entity] of this._gameState.map.entities) {
       if (entity.type !== 'soldier') continue;
       const s = entity.state.status;
-      if (s !== 'moving-to-attack' && s !== 'attacking') continue;
+      if (s !== 'attacking') continue;
       const px = entity.x * TILE_SIZE + TILE_SIZE / 2;
       const py = entity.y * TILE_SIZE + TILE_SIZE / 2;
       this.attackEyeGraphics.fillStyle(0xff0000, 1);
@@ -416,10 +416,19 @@ export class GameScene extends Phaser.Scene {
 
   private drawGrid() {
     if (!this._gameState) return;
-    const { width, height } = this._gameState.map;
+    const { width, height, tiles } = this._gameState.map;
     this.tileGraphics.clear();
     this.tileGraphics.fillStyle(0x3a5f0b, 1);
     this.tileGraphics.fillRect(0, 0, width * TILE_SIZE, height * TILE_SIZE);
+
+    for (const [key, tile] of tiles) {
+      const [x, y] = key.split(',').map(Number);
+      const color = tile.terrain === TileType.Water ? 0x1a5276
+        : tile.terrain === TileType.Mountain ? 0x5d4037
+        : 0x3a5f0b;
+      this.tileGraphics.fillStyle(color, 1);
+      this.tileGraphics.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    }
 
     this.tileGraphics.lineStyle(1, 0x2d4a08, 0.3);
     for (let x = 0; x <= width; x++) {
