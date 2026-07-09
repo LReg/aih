@@ -21,6 +21,7 @@ export interface GamemodeConfig {
   soldierMoveRange: number;
   soldierAttackRange: number;
   soldierDetectRange: number;
+  soldierAttackBarracksKillChance: number;
   winCondition: WinCondition;
 }
 
@@ -38,6 +39,7 @@ export const GAMEMODE_CONFIGS: Record<Gamemode, GamemodeConfig> = {
     soldierMoveRange: 3,
     soldierAttackRange: 1,
     soldierDetectRange: 5,
+    soldierAttackBarracksKillChance: 0.25,
     winCondition: (game) => {
       const alive = new Set<string>();
       for (const entity of game.map.entities.values()) {
@@ -60,6 +62,7 @@ export const GAMEMODE_CONFIGS: Record<Gamemode, GamemodeConfig> = {
     soldierMoveRange: 3,
     soldierAttackRange: 1,
     soldierDetectRange: 5,
+    soldierAttackBarracksKillChance: 0.25,
     winCondition: (game) => {
       const alive = new Set<string>();
       for (const entity of game.map.entities.values()) {
@@ -82,6 +85,7 @@ export const GAMEMODE_CONFIGS: Record<Gamemode, GamemodeConfig> = {
     soldierMoveRange: 3,
     soldierAttackRange: 1,
     soldierDetectRange: 5,
+    soldierAttackBarracksKillChance: 0.25,
     winCondition: (game) => {
       const alive = new Set<string>();
       for (const entity of game.map.entities.values()) {

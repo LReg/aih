@@ -215,6 +215,25 @@ export class GameMap {
     return null;
   }
 
+  isNearBarracks(x: number, y: number): boolean {
+    for (const entity of this.entities.values()) {
+      if (entity.type !== 'barracks') continue;
+      if (Math.abs(entity.x - x) <= 1 && Math.abs(entity.y - y) <= 1) return true;
+    }
+    return false;
+  }
+
+  findNearestEmptyTileAvoidBarracks(x: number, y: number): { x: number; y: number } | null {
+    for (const d of DIRS) {
+      const nx = x + d.dx;
+      const ny = y + d.dy;
+      if (this.isInBounds(nx, ny) && this.isTileEmpty(nx, ny) && !this.isNearBarracks(nx, ny)) {
+        return { x: nx, y: ny };
+      }
+    }
+    return null;
+  }
+
   getEntitiesByOwner(ownerId: string): Entity[] {
     const result: Entity[] = [];
     for (const entity of this.entities.values()) {

@@ -232,15 +232,27 @@ export class GameService {
         this.logger.log(`attack: entity=${entity.id} vs target=${target.id} dist=${dist}`);
 
         if (dist <= config.soldierAttackRange) {
-          const attackerWins = Math.random() < 0.5;
-          if (attackerWins) {
-            game.map.removeEntity(target.id);
-            entity.state = { status: 'idle' };
-            entity.lastCommand = 'attack';
-            this.logger.log(`attack: entity=${entity.id} killed target=${target.id}`);
+          if (target.type === 'soldier') {
+            const attackerWins = Math.random() < 0.5;
+            if (attackerWins) {
+              game.map.removeEntity(target.id);
+              entity.state = { status: 'idle' };
+              entity.lastCommand = 'attack';
+              this.logger.log(`attack: entity=${entity.id} killed target=${target.id}`);
+            } else {
+              game.map.removeEntity(entity.id);
+              this.logger.log(`attack: entity=${entity.id} killed by target=${target.id}`);
+            }
           } else {
-            game.map.removeEntity(entity.id);
-            this.logger.log(`attack: entity=${entity.id} killed by target=${target.id}`);
+            if (Math.random() < config.soldierAttackBarracksKillChance) {
+              game.map.removeEntity(target.id);
+              entity.state = { status: 'idle' };
+              entity.lastCommand = 'attack';
+              this.logger.log(`attack: entity=${entity.id} destroyed barracks=${target.id}`);
+            } else {
+              entity.state = { status: 'idle' };
+              this.logger.log(`attack: entity=${entity.id} failed to destroy barracks=${target.id}`);
+            }
           }
           anySucceeded = true;
           continue;
@@ -278,7 +290,7 @@ export class GameService {
     const results: { entity: Entity; dist: number }[] = [];
     for (const other of game.map.entities.values()) {
       if (other.ownerId === entity.ownerId) continue;
-      if (other.type !== 'soldier') continue;
+      if (other.type !== 'soldier' && other.type !== 'barracks') continue;
       const dist = manhattan(other, { x: nearX, y: nearY });
       if (dist > range) continue;
       results.push({ entity: other, dist });
@@ -310,8 +322,8 @@ export class GameService {
       if (entity.state.status !== 'idle') { this.logger.warn(`build: entity=${entityId} not idle`); continue; }
       if (entity.type !== 'soldier') { this.logger.warn(`build: entity=${entityId} not soldier`); continue; }
 
-      const adj = game.map.findNearestEmptyTile(entity.x, entity.y);
-      if (!adj) { this.logger.warn(`build: entity=${entityId} no adjacent empty tile`); continue; }
+      const adj = game.map.findNearestEmptyTileAvoidBarracks(entity.x, entity.y);
+      if (!adj) { this.logger.warn(`build: entity=${entityId} no valid tile (need 1-tile gap from barracks)`); continue; }
 
       entity.state = { status: 'building-barracks', startedAtTick: game.tick };
       const barracks = createBarracks(action.playerId, adj.x, adj.y, game.tick);
@@ -352,14 +364,25 @@ export class GameService {
     if (!target) { entity.state = { status: 'idle' }; return; }
 
     if (manhattan(entity, target) <= config.soldierAttackRange) {
-      const attackerWins = Math.random() < 0.5;
-      if (attackerWins) {
-        game.map.removeEntity(target.id);
-        entity.state = { status: 'idle' };
-        this.logger.log(`advanceAttack: entity=${entity.id} killed target=${target.id}`);
+      if (target.type === 'soldier') {
+        const attackerWins = Math.random() < 0.5;
+        if (attackerWins) {
+          game.map.removeEntity(target.id);
+          entity.state = { status: 'idle' };
+          this.logger.log(`advanceAttack: entity=${entity.id} killed target=${target.id}`);
+        } else {
+          game.map.removeEntity(entity.id);
+          this.logger.log(`advanceAttack: entity=${entity.id} killed by target=${target.id}`);
+        }
       } else {
-        game.map.removeEntity(entity.id);
-        this.logger.log(`advanceAttack: entity=${entity.id} killed by target=${target.id}`);
+        if (Math.random() < config.soldierAttackBarracksKillChance) {
+          game.map.removeEntity(target.id);
+          entity.state = { status: 'idle' };
+          this.logger.log(`advanceAttack: entity=${entity.id} destroyed barracks=${target.id}`);
+        } else {
+          entity.state = { status: 'idle' };
+          this.logger.log(`advanceAttack: entity=${entity.id} failed to destroy barracks=${target.id}`);
+        }
       }
       return;
     }
@@ -389,27 +412,52 @@ export class GameService {
       if (entity.type !== 'soldier') continue;
       if (entity.state.status !== 'idle') continue;
       if (entity.lastCommand === 'move') continue;
+
+      let nearest: Entity | null = null;
+      let nearestDist = Infinity;
+      let preferSoldier = false;
+
       for (const other of game.map.entities.values()) {
         if (other.ownerId === entity.ownerId) continue;
-        if (other.type !== 'soldier') continue;
+        if (other.type !== 'soldier' && other.type !== 'barracks') continue;
         const dist = manhattan(entity, other);
         if (dist > config.soldierDetectRange) continue;
-        if (dist <= config.soldierAttackRange) {
+
+        if (other.type === 'soldier') {
+          if (!preferSoldier || dist < nearestDist) {
+            nearest = other;
+            nearestDist = dist;
+            preferSoldier = true;
+          }
+        } else if (!preferSoldier && dist < nearestDist) {
+          nearest = other;
+          nearestDist = dist;
+        }
+      }
+
+      if (!nearest) continue;
+
+      if (nearestDist <= config.soldierAttackRange) {
+        if (nearest.type === 'soldier') {
           const attackerWins = Math.random() < 0.5;
           if (attackerWins) {
-            game.map.removeEntity(other.id);
-            this.logger.log(`autoAttack: entity=${entity.id} killed ${other.id}`);
+            game.map.removeEntity(nearest.id);
+            this.logger.log(`autoAttack: entity=${entity.id} killed ${nearest.id}`);
           } else {
             game.map.removeEntity(entity.id);
-            this.logger.log(`autoAttack: entity=${entity.id} killed by ${other.id}`);
+            this.logger.log(`autoAttack: entity=${entity.id} killed by ${nearest.id}`);
           }
         } else {
-          const path = findPath(entity.x, entity.y, other.x, other.y, (x, y) => !game.map.isTileEmpty(x, y), game.map.width, game.map.height);
-          if (!path) continue;
-          entity.state = { status: 'moving-to-attack', targetId: other.id, path };
-          this.logger.log(`autoAttack: entity=${entity.id} chasing ${other.id}`);
+          if (Math.random() < config.soldierAttackBarracksKillChance) {
+            game.map.removeEntity(nearest.id);
+            this.logger.log(`autoAttack: entity=${entity.id} destroyed barracks=${nearest.id}`);
+          }
         }
-        break;
+      } else {
+        const path = findPath(entity.x, entity.y, nearest.x, nearest.y, (x, y) => !game.map.isTileEmpty(x, y), game.map.width, game.map.height);
+        if (!path) continue;
+        entity.state = { status: 'moving-to-attack', targetId: nearest.id, path };
+        this.logger.log(`autoAttack: entity=${entity.id} chasing ${nearest.type}=${nearest.id}`);
       }
     }
   }
