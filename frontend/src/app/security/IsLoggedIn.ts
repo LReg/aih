@@ -21,11 +21,14 @@ export const isLoggedIn: CanActivateFn = (
     console.log('auth service not available');
     return router.createUrlTree(['/login']);
   }
+  if (auth.isLocalAuth()) {
+    return true;
+  }
   return auth.initialized.pipe(
     filter(initialized => initialized),
     switchMap(() => auth.isAuthenticated()),
-    map(isLoggedIn => {
-      if (isLoggedIn) {
+    map(loggedIn => {
+      if (loggedIn) {
         return true;
       } else {
         return router.createUrlTree(['/login']);

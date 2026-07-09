@@ -1,7 +1,8 @@
 import { Component } from '@angular/core';
+import {FormsModule} from "@angular/forms";
 import {AuthService} from "../../service/auth/auth.service";
 import {AsyncPipe, NgIf} from "@angular/common";
-import {RouterLink} from "@angular/router";
+import {Router, RouterLink} from "@angular/router";
 
 @Component({
   selector: 'app-login',
@@ -9,11 +10,25 @@ import {RouterLink} from "@angular/router";
   imports: [
     NgIf,
     RouterLink,
-    AsyncPipe
+    AsyncPipe,
+    FormsModule,
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss'
 })
 export class LoginComponent {
-  constructor(public authService: AuthService) {}
+  localUsername = '';
+  useLocal = false;
+
+  constructor(
+    public authService: AuthService,
+    private router: Router,
+  ) {}
+
+  loginLocal() {
+    const name = this.localUsername.trim();
+    if (!name) return;
+    this.authService.loginLocal(name);
+    this.router.navigate(['/']);
+  }
 }

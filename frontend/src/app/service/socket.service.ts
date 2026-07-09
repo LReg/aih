@@ -21,7 +21,7 @@ export class SocketService implements OnDestroy {
   gameFound$: Observable<GameFoundEvent> = this.gameFoundSubject.asObservable();
   stateUpdate$: Observable<GameState> = this.stateUpdateSubject.asObservable();
 
-  private readonly socketPath = '/api/socket.io';
+  private readonly socketPath = environment.apiUrl.endsWith('/api') ? '/api/socket.io' : '/socket.io';
 
   get socketHost(): string {
     return environment.apiUrl.replace(/\/api$/, '');

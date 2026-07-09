@@ -5,12 +5,13 @@ import { routes } from './app.routes';
 import {provideHttpClient, withInterceptors} from "@angular/common/http";
 import {authInterceptor, LogLevel, provideAuth} from "angular-auth-oidc-client";
 import {environment} from "../environments/environment";
+import {idTokenInterceptor} from "./interceptors/idTokenInterceptor";
 
 
 export const appConfig: ApplicationConfig = {
   providers: [provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
-    provideHttpClient(withInterceptors([authInterceptor()])),
+    provideHttpClient(withInterceptors([authInterceptor(), idTokenInterceptor])),
     provideAuth({
       config: {
         authority: environment.authUrl,

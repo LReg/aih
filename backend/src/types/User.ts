@@ -8,4 +8,5 @@ export interface User {
     name: string;
     preferredUsername: string;
     role: Role;
+    localAuth?: boolean;
 }

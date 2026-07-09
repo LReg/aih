@@ -1,4 +1,4 @@
-import { Injectable, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Inject, forwardRef, Logger } from '@nestjs/common';
 import { Gamemode, GAMEMODE_CONFIGS } from '../game/gamemode.config';
 import { GameService } from '../game/game.service';
 import { PendingMatch } from './pending-match';
@@ -8,6 +8,7 @@ import { QueueService } from '../queue/queue.service';
 
 @Injectable()
 export class MatchmakingService {
+  private readonly logger = new Logger(MatchmakingService.name);
   private timers = new Map<string, NodeJS.Timeout>();
 
   constructor(
@@ -19,6 +20,7 @@ export class MatchmakingService {
   ) {}
 
   createMatch(gamemode: Gamemode, players: string[]): PendingMatch {
+    this.logger.log(`createMatch gamemode="${gamemode}" players=[${players}]`);
     const config = GAMEMODE_CONFIGS[gamemode];
     const match = new PendingMatch(gamemode, players, config.startTimerSeconds);
     match.state = 'countdown';
@@ -28,24 +30,37 @@ export class MatchmakingService {
   }
 
   addPlayer(matchId: string, userId: string): boolean {
+    this.logger.log(`addPlayer matchId="${matchId}" userId="${userId}"`);
     const match = this.dao.get(matchId);
-    if (!match || match.state !== 'countdown') return false;
+    if (!match || match.state !== 'countdown') {
+      this.logger.log(`addPlayer failed: match not found or not in countdown`);
+      return false;
+    }
 
     const config = GAMEMODE_CONFIGS[match.gamemode];
-    if (match.players.length >= config.maxPlayers) return false;
+    if (match.players.length >= config.maxPlayers) {
+      this.logger.log(`addPlayer failed: match full (${match.players.length}/${config.maxPlayers})`);
+      return false;
+    }
 
     match.players.push(userId);
     this.gateway.emitCountdownTick(match.gamemode, match.secondsRemaining, match.players);
+    this.logger.log(`addPlayer success, players now=[${match.players}]`);
     return true;
   }
 
   getActiveMatch(gamemode: Gamemode): PendingMatch | undefined {
     const match = this.dao.getByGamemode(gamemode);
-    if (!match || match.state !== 'countdown') return;
+    if (!match || match.state !== 'countdown') {
+      this.logger.log(`getActiveMatch gamemode="${gamemode}": none`);
+      return;
+    }
+    this.logger.log(`getActiveMatch gamemode="${gamemode}": id="${match.id}" players=[${match.players}]`);
     return match;
   }
 
   removePlayer(matchId: string, userId: string): { requeued: string[] } {
+    this.logger.log(`removePlayer matchId="${matchId}" userId="${userId}"`);
     const match = this.dao.get(matchId);
     if (!match || match.state !== 'countdown') return { requeued: [] };
 
@@ -66,6 +81,7 @@ export class MatchmakingService {
   }
 
   cancelMatch(matchId: string): string[] {
+    this.logger.log(`cancelMatch matchId="${matchId}"`);
     const match = this.dao.get(matchId);
     if (!match) return [];
 
@@ -77,12 +93,14 @@ export class MatchmakingService {
   }
 
   private startCountdown(match: PendingMatch) {
+    this.logger.log(`startCountdown matchId="${match.id}" seconds=${match.secondsRemaining}`);
     this.gateway.emitCountdownTick(match.gamemode, match.secondsRemaining, match.players);
 
     this.timers.set(match.id, setInterval(() => {
       match.secondsRemaining--;
 
       if (match.secondsRemaining <= 0) {
+        this.logger.log(`countdown finished for matchId="${match.id}"`);
         this.stopCountdown(match.id);
         this.launch(match);
         return;
@@ -97,10 +115,12 @@ export class MatchmakingService {
     if (timer) {
       clearInterval(timer);
       this.timers.delete(matchId);
+      this.logger.log(`stopCountdown matchId="${matchId}"`);
     }
   }
 
   private launch(match: PendingMatch) {
+    this.logger.log(`launch matchId="${match.id}" gamemode="${match.gamemode}" players=[${match.players}]`);
     const config = GAMEMODE_CONFIGS[match.gamemode];
     if (!config) return;
 

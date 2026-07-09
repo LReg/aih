@@ -8,17 +8,36 @@ export async function upsertUser(db: Db, user: User): Promise<UpdateResult | nul
     try {
         return await db.collection<User>('user').updateOne(
             { email: user.email },
-            {
-                $set: {
-                    email: user.email,
-                    name: user.name,
-                    preferredUsername: user.preferredUsername
-                }
-            },
+            { $set: { email: user.email, name: user.name, preferredUsername: user.preferredUsername } },
             options
         );
     } catch (err) {
         console.error('Error while upserting user:', err);
+        throw err;
+    }
+}
+
+export async function upsertUserLocal(db: Db, uuid: string, username: string): Promise<User> {
+    const email = `${uuid}@local`;
+    try {
+        await db.collection<User>('user').updateOne(
+            { email },
+            {
+                $set: {
+                    email,
+                    name: username,
+                    preferredUsername: username,
+                    localAuth: true,
+                    role: Role.USER,
+                },
+            },
+            { upsert: true }
+        );
+        const user = await db.collection<User>('user').findOne({ email });
+        if (!user) throw new Error('Failed to create local user');
+        return user;
+    } catch (err) {
+        console.error('Error while upserting local user:', err);
         throw err;
     }
 }
