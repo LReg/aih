@@ -16,6 +16,9 @@ import { GameScene } from './scenes/game-scene';
     <div class="game-layout">
       <div class="top-bar">
         <span class="game-timer">{{ elapsedTime }}</span>
+        @if (peaceRemaining > 0) {
+          <span class="peace-badge">Peace {{ peaceRemaining }}s</span>
+        }
         <span class="game-tick">Tick {{ gameTick }}</span>
       </div>
       <div #phaserContainer class="phaser-container"></div>
@@ -92,6 +95,13 @@ import { GameScene } from './scenes/game-scene';
     }
     .game-tick {
       font-size: 12px; color: #7070a0;
+      font-variant-numeric: tabular-nums;
+    }
+    .peace-badge {
+      font-size: 12px; font-weight: 600;
+      color: #5ce75c; background: #1a3a1a;
+      border: 1px solid #2a5a2a;
+      border-radius: 4px; padding: 2px 8px;
       font-variant-numeric: tabular-nums;
     }
     .phaser-container { flex: 1; min-height: 0; }
@@ -189,6 +199,12 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   elapsedTime = '00:00';
   private tickRateMs = 500;
   private startedAt = 0;
+  private peaceUntil = 0;
+
+  get peaceRemaining(): number {
+    if (!this.peaceUntil) return 0;
+    return Math.max(0, Math.floor((this.peaceUntil - Date.now()) / 1000));
+  }
 
   get selectedSoldiers(): number {
     return this.selectedEntities.filter(e => e.type === 'soldier').length;
@@ -294,6 +310,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     this.gameTick = state.tick;
     this.tickRateMs = state.tickRateMs;
     this.startedAt = state.startedAt;
+    this.peaceUntil = state.peaceUntil;
     this.elapsedTime = this.formatElapsed(state.tick, state.tickRateMs);
     this.gameScene.updateFromState(state);
     if (state.state === 'finished') {

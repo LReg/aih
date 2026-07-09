@@ -28,6 +28,7 @@ export class GameService {
     game.state = 'running';
     game.tick = 0;
     game.startedAt = Date.now();
+    game.peaceUntil = Date.now() + config.peaceDurationMs;
     game.tickRateMs = config.tickRateMs;
     this.gameDao.saveGame(game);
     this.gameGateway.broadcastGameStart(game);
@@ -211,6 +212,10 @@ export class GameService {
   }
 
   private processAttackCommand(game: Game, action: QueuedAction) {
+    if (this.isPeaceTime(game)) {
+      this.logger.warn(`attack rejected during peace time game=${game.id}`);
+      return;
+    }
     const payload = action.payload as AttackPayload;
     const config = GAMEMODE_CONFIGS[game.gamemode];
     const entities = this.resolveEntities(game, payload.entityIds, action.playerId);
@@ -406,58 +411,50 @@ export class GameService {
     state.path.shift();
   }
 
+  private isPeaceTime(game: Game): boolean {
+    return Date.now() < game.peaceUntil;
+  }
+
   private processAutoAttack(game: Game) {
+    if (this.isPeaceTime(game)) return;
     const config = GAMEMODE_CONFIGS[game.gamemode];
     for (const entity of game.map.entities.values()) {
       if (entity.type !== 'soldier') continue;
       if (entity.state.status !== 'idle') continue;
-      if (entity.lastCommand === 'move') continue;
+      if (entity.lastCommand !== 'attack') continue;
 
-      let nearest: Entity | null = null;
-      let nearestDist = Infinity;
-      let preferSoldier = false;
-
+      let nearest: { entity: Entity; dist: number } | null = null;
       for (const other of game.map.entities.values()) {
         if (other.ownerId === entity.ownerId) continue;
         if (other.type !== 'soldier' && other.type !== 'barracks') continue;
         const dist = manhattan(entity, other);
         if (dist > config.soldierDetectRange) continue;
-
-        if (other.type === 'soldier') {
-          if (!preferSoldier || dist < nearestDist) {
-            nearest = other;
-            nearestDist = dist;
-            preferSoldier = true;
-          }
-        } else if (!preferSoldier && dist < nearestDist) {
-          nearest = other;
-          nearestDist = dist;
-        }
+        if (!nearest || dist < nearest.dist) nearest = { entity: other, dist };
       }
 
       if (!nearest) continue;
 
-      if (nearestDist <= config.soldierAttackRange) {
-        if (nearest.type === 'soldier') {
+      if (nearest.dist <= config.soldierAttackRange) {
+        if (nearest.entity.type === 'soldier') {
           const attackerWins = Math.random() < 0.5;
           if (attackerWins) {
-            game.map.removeEntity(nearest.id);
-            this.logger.log(`autoAttack: entity=${entity.id} killed ${nearest.id}`);
+            game.map.removeEntity(nearest.entity.id);
+            this.logger.log(`autoAttack: entity=${entity.id} killed ${nearest.entity.id}`);
           } else {
             game.map.removeEntity(entity.id);
-            this.logger.log(`autoAttack: entity=${entity.id} killed by ${nearest.id}`);
+            this.logger.log(`autoAttack: entity=${entity.id} killed by ${nearest.entity.id}`);
           }
         } else {
           if (Math.random() < config.soldierAttackBarracksKillChance) {
-            game.map.removeEntity(nearest.id);
-            this.logger.log(`autoAttack: entity=${entity.id} destroyed barracks=${nearest.id}`);
+            game.map.removeEntity(nearest.entity.id);
+            this.logger.log(`autoAttack: entity=${entity.id} destroyed barracks=${nearest.entity.id}`);
           }
         }
       } else {
-        const path = findPath(entity.x, entity.y, nearest.x, nearest.y, (x, y) => !game.map.isTileEmpty(x, y), game.map.width, game.map.height);
+        const path = findPath(entity.x, entity.y, nearest.entity.x, nearest.entity.y, (x, y) => !game.map.isTileEmpty(x, y), game.map.width, game.map.height);
         if (!path) continue;
-        entity.state = { status: 'moving-to-attack', targetId: nearest.id, path };
-        this.logger.log(`autoAttack: entity=${entity.id} chasing ${nearest.type}=${nearest.id}`);
+        entity.state = { status: 'moving-to-attack', targetId: nearest.entity.id, path };
+        this.logger.log(`autoAttack: entity=${entity.id} chasing nearest=${nearest.entity.id}`);
       }
     }
   }

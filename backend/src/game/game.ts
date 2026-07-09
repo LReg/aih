@@ -17,6 +17,7 @@ export class Game {
   state: GameState = 'waiting';
   tick: number = 0;
   startedAt: number = 0;
+  peaceUntil: number = 0;
   tickRateMs: number = 500;
   actionQueue: QueuedAction[] = [];
   winners: string[] = [];
@@ -34,6 +35,7 @@ export class Game {
       gamemode: this.gamemode,
       tick: this.tick,
       startedAt: this.startedAt,
+      peaceUntil: this.peaceUntil,
       tickRateMs: this.tickRateMs,
       map: {
         width: this.map.width,

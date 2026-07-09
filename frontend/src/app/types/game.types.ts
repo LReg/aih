@@ -27,6 +27,7 @@ export interface GameState {
   gamemode: string;
   tick: number;
   startedAt: number;
+  peaceUntil: number;
   tickRateMs: number;
   map: {
     width: number;
