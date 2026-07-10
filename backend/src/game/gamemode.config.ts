@@ -76,7 +76,7 @@ export const GAMEMODE_CONFIGS: Record<string, GamemodeConfig> = {
     soldierAttackRange: 1,
     soldierDetectRange: 5,
     soldierAttackBarracksKillChance: 0.25,
-    peaceDurationMs: 100000,
+    peaceDurationMs: 500000,
     winCondition: DEFAULT_WIN_CONDITION,
   },
   [Gamemode.Slow]: {
@@ -93,7 +93,7 @@ export const GAMEMODE_CONFIGS: Record<string, GamemodeConfig> = {
     soldierAttackRange: 1,
     soldierDetectRange: 5,
     soldierAttackBarracksKillChance: 0.25,
-    peaceDurationMs: 100000,
+    peaceDurationMs: 700000,
     winCondition: DEFAULT_WIN_CONDITION,
   },
   [Gamemode.Test]: {

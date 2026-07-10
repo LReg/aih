@@ -1,5 +1,7 @@
 import { PathCache } from './movement/pathCache';
 
+export const USE_PATH_CACHE = true;
+
 export const DIRS = [
   { dx: 0, dy: -1 },
   { dx: 1, dy: 0 },
@@ -108,7 +110,7 @@ export function findPath(
     if (closed.has(curKey)) continue;
     closed.add(curKey);
 
-    if (pathCache && pathCache.contains(toX, toY, curKey)) {
+    if (USE_PATH_CACHE && pathCache && pathCache.contains(toX, toY, curKey)) {
       const prefix = reconstructPath(cameFrom, key, cur.x, cur.y);
       const suffix = pathCache.getSuffix(toX, toY, curKey, maxW)!;
       let valid = true;
@@ -126,7 +128,7 @@ export function findPath(
 
     if (cur.x === toX && cur.y === toY) {
       const result = reconstructPath(cameFrom, key, toX, toY);
-      if (pathCache) pathCache.store(toX, toY, result, maxW);
+      if (USE_PATH_CACHE && pathCache) pathCache.store(toX, toY, result, maxW);
       return result;
     }
 
@@ -152,6 +154,6 @@ export function findPath(
   }
 
   const result = reconstructPath(cameFrom, key, bestNode.x, bestNode.y);
-  if (pathCache && result.length > 1) pathCache.store(toX, toY, result, maxW);
+  if (USE_PATH_CACHE && pathCache && result.length > 1) pathCache.store(toX, toY, result, maxW);
   return result;
 }
