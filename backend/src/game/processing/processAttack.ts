@@ -1,12 +1,13 @@
 import { Game } from '../game';
 import { manhattan } from '../algorithms/findPath';
 import { advancePath } from '../algorithms/movement/advancePath';
+import { PathCache } from '../algorithms/movement/pathCache';
 import { GAMEMODE_CONFIGS } from '../gamemode.config';
 import { isPeaceTime } from '../algorithms/isPeaceTime';
 import { findNearestEnemy } from '../algorithms/findNearestEnemy';
 import { resolveEntityCombat } from '../actions/attack.action';
 
-export function processAttack(game: Game): void {
+export function processAttack(game: Game, pathCache: PathCache): void {
   if (isPeaceTime(game)) return;
   const config = GAMEMODE_CONFIGS[game.gamemode];
 
@@ -22,10 +23,10 @@ export function processAttack(game: Game): void {
       if (manhattan(entity, nearest) <= config.soldierAttackRange) {
         resolveEntityCombat(game, entity, nearest, config.soldierAttackBarracksKillChance);
       } else {
-        advancePath(game, entity, nearest.x, nearest.y);
+        advancePath(game, entity, nearest.x, nearest.y, pathCache);
       }
     } else if (entity.x !== a.targetX || entity.y !== a.targetY) {
-      advancePath(game, entity, a.targetX, a.targetY);
+      advancePath(game, entity, a.targetX, a.targetY, pathCache);
     }
   }
 }

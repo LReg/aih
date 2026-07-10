@@ -2,6 +2,7 @@ import { Logger } from '@nestjs/common';
 import { Game, QueuedAction } from '../game';
 import { Entity } from '../game-map';
 import { resolveEntities } from '../algorithms/resolveEntities';
+import { getSpreadPositions } from '../algorithms/getSpreadPositions';
 import { isPeaceTime } from '../algorithms/isPeaceTime';
 
 const logger = new Logger('AttackAction');
@@ -20,11 +21,19 @@ export function attackAction(game: Game, action: QueuedAction): void {
     return;
   }
 
-  for (const entity of entities) {
+  const targets = getSpreadPositions(
+    payload.x, payload.y, entities.length,
+    (x, y) => game.map.isTileEmpty(x, y),
+    game.map.width, game.map.height,
+  );
+
+  for (let i = 0; i < entities.length; i++) {
+    const entity = entities[i];
     if (entity.state.status === 'building-barracks') { continue; }
-    entity.state = { status: 'attacking', targetX: payload.x, targetY: payload.y };
+    const t = targets[i] || { x: payload.x, y: payload.y };
+    entity.state = { status: 'attacking', targetX: t.x, targetY: t.y };
     entity.lastCommand = 'attack';
-    logger.log(`attack: entity=${entity.id} target=(${payload.x},${payload.y})`);
+    logger.log(`attack: entity=${entity.id} target=(${t.x},${t.y})`);
   }
 }
 

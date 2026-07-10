@@ -12,6 +12,21 @@ export interface QueuedAction {
   timestamp: number;
 }
 
+const COLORS = [
+  '#22c55e', '#eab308', '#ef4444', '#3b82f6',
+  '#a855f7', '#ec4899', '#14b8a6', '#f97316',
+  '#06b6d4', '#84cc16', '#8b5cf6', '#f43f5e',
+];
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 export class Game {
   readonly id: string = randomUUID();
   state: GameState = 'waiting';
@@ -21,13 +36,20 @@ export class Game {
   tickRateMs: number = 500;
   actionQueue: QueuedAction[] = [];
   winners: string[] = [];
+  playerColors: Record<string, string>;
 
   constructor(
     public readonly gamemode: Gamemode,
     public readonly map: GameMap,
     public readonly players: string[],
     public readonly createdAt: Date = new Date(),
-  ) {}
+  ) {
+    const shuffled = shuffle(COLORS);
+    this.playerColors = {};
+    for (let i = 0; i < players.length; i++) {
+      this.playerColors[players[i]] = shuffled[i % shuffled.length];
+    }
+  }
 
   toJSON() {
     return {
@@ -44,6 +66,7 @@ export class Game {
         entities: Array.from(this.map.entities.entries()),
       },
       players: this.players,
+      playerColors: this.playerColors,
       state: this.state,
       winners: this.winners,
       createdAt: this.createdAt,

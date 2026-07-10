@@ -2,12 +2,14 @@ import { Game } from '../../game';
 import { Entity } from '../../game-map';
 import { findPath } from '../findPath';
 import { tryCachedStep } from './tryCachedStep';
+import { PathCache } from './pathCache';
 
 export function advancePath(
   game: Game,
   entity: Entity,
   targetX: number,
   targetY: number,
+  pathCache?: PathCache,
 ): boolean {
   if (tryCachedStep(game, entity, targetX, targetY)) return true;
 
@@ -15,6 +17,7 @@ export function advancePath(
     entity.x, entity.y, targetX, targetY,
     (x, y) => !game.map.isTileEmpty(x, y),
     game.map.width, game.map.height,
+    pathCache,
   );
 
   if (!path || path.length < 2) return false;

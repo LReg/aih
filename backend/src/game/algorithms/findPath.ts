@@ -1,3 +1,5 @@
+import { PathCache } from './movement/pathCache';
+
 export const DIRS = [
   { dx: 0, dy: -1 },
   { dx: 1, dy: 0 },
@@ -81,6 +83,7 @@ export function findPath(
   isBlocked: (x: number, y: number) => boolean,
   maxW: number,
   maxH: number,
+  pathCache?: PathCache,
 ): { x: number; y: number }[] | null {
   if (fromX === toX && fromY === toY) return [];
 
@@ -105,6 +108,16 @@ export function findPath(
     if (closed.has(curKey)) continue;
     closed.add(curKey);
 
+    if (pathCache && pathCache.contains(toX, toY, curKey)) {
+      const prefix = reconstructPath(cameFrom, key, cur.x, cur.y);
+      const suffix = pathCache.getSuffix(toX, toY, curKey, maxW)!;
+      let valid = true;
+      for (let i = 1; i < suffix.length; i++) {
+        if (isBlocked(suffix[i].x, suffix[i].y)) { valid = false; break; }
+      }
+      if (valid) return prefix.concat(suffix.slice(1));
+    }
+
     const curDist = manhattan({ x: cur.x, y: cur.y }, { x: toX, y: toY });
     if (curDist < bestDist) {
       bestDist = curDist;
@@ -112,7 +125,9 @@ export function findPath(
     }
 
     if (cur.x === toX && cur.y === toY) {
-      return reconstructPath(cameFrom, key, toX, toY);
+      const result = reconstructPath(cameFrom, key, toX, toY);
+      if (pathCache) pathCache.store(toX, toY, result, maxW);
+      return result;
     }
 
     const curG = gScore.get(curKey)!;
@@ -136,5 +151,7 @@ export function findPath(
     }
   }
 
-  return reconstructPath(cameFrom, key, bestNode.x, bestNode.y);
+  const result = reconstructPath(cameFrom, key, bestNode.x, bestNode.y);
+  if (pathCache && result.length > 1) pathCache.store(toX, toY, result, maxW);
+  return result;
 }

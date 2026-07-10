@@ -113,7 +113,7 @@ export class GameScene extends Phaser.Scene {
       if (existing) {
         existing.setPosition(entity.x * TILE_SIZE + TILE_SIZE / 2, entity.y * TILE_SIZE + TILE_SIZE / 2);
       } else {
-        this.createSprite(entity, state.players);
+        this.createSprite(entity);
       }
     }
     for (const [id, sprite] of this.sprites) {
@@ -135,18 +135,20 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private createSprite(entity: Entity, players: string[]) {
+  private createSprite(entity: Entity) {
     const x = entity.x * TILE_SIZE + TILE_SIZE / 2;
     const y = entity.y * TILE_SIZE + TILE_SIZE / 2;
-    const color = this.playerColor(entity.ownerId, players);
+    const color = this.playerColor(entity.ownerId);
     const key = this.makeTexture(color, entity.type);
     const sprite = this.add.sprite(x, y, key);
     sprite.setData('entityId', entity.id);
     this.sprites.set(entity.id, sprite);
   }
 
-  private playerColor(ownerId: string, _players: string[]): number {
-    return ownerId === this.playerId ? 0x3388ff : 0xff4444;
+  private playerColor(ownerId: string): number {
+    if (!this._gameState) return 0xcccccc;
+    const hex = this._gameState.playerColors[ownerId];
+    return hex ? parseInt(hex.slice(1), 16) : 0xcccccc;
   }
 
   private makeTexture(color: number, type: string): string {

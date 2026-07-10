@@ -19,6 +19,7 @@ import { GameScene } from './scenes/game-scene';
         @if (peaceRemaining > 0) {
           <span class="peace-badge">Peace {{ peaceRemaining }}s</span>
         }
+        <span class="player-label" [style.color]="playerColor">{{ playerName }}</span>
         <span class="game-tick">Tick {{ gameTick }}</span>
       </div>
       <div #phaserContainer class="phaser-container"></div>
@@ -94,6 +95,11 @@ import { GameScene } from './scenes/game-scene';
     .game-tick {
       font-size: 12px; color: #7070a0;
       font-variant-numeric: tabular-nums;
+    }
+    .player-label {
+      font-size: 13px; font-weight: 600;
+      letter-spacing: 0.3px;
+      text-shadow: 0 0 6px currentColor;
     }
     .peace-badge {
       font-size: 12px; font-weight: 600;
@@ -195,6 +201,8 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   isWinner = false;
   gameTick = 0;
   elapsedTime = '00:00';
+  playerName = '';
+  playerColor = '#ccc';
   private tickRateMs = 500;
   private startedAt = 0;
   private peaceUntil = 0;
@@ -310,6 +318,8 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     this.startedAt = state.startedAt;
     this.peaceUntil = state.peaceUntil;
     this.elapsedTime = this.formatElapsed(state.startedAt);
+    this.playerName = this.userId;
+    this.playerColor = state.playerColors?.[this.userId] || '#ccc';
     this.gameScene.updateFromState(state);
     if (state.state === 'finished') {
       this.gameFinished = true;

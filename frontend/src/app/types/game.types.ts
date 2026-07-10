@@ -41,6 +41,7 @@ export interface GameState {
     entities: [string, Entity][];
   };
   players: string[];
+  playerColors: Record<string, string>;
   state: string;
   winners: string[];
   createdAt: string;

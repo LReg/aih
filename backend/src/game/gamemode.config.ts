@@ -100,7 +100,7 @@ export const GAMEMODE_CONFIGS: Record<string, GamemodeConfig> = {
     maxPlayers: 5,
     startMinPlayers: 1,
     startTimerSeconds: 10,
-    tickRateMs: 250,
+    tickRateMs: 150,
     maxDurationMs: 3600000,
     mapWidth: 100,
     mapHeight: 100,

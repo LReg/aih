@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { Game, QueuedAction } from '../game';
 import { resolveEntities } from '../algorithms/resolveEntities';
+import { getSpreadPositions } from '../algorithms/getSpreadPositions';
 
 const logger = new Logger('WalkAction');
 
@@ -14,10 +15,18 @@ export function walkAction(game: Game, action: QueuedAction): void {
     return;
   }
 
-  for (const e of entities) {
+  const targets = getSpreadPositions(
+    payload.x, payload.y, entities.length,
+    (x, y) => game.map.isTileEmpty(x, y),
+    game.map.width, game.map.height,
+  );
+
+  for (let i = 0; i < entities.length; i++) {
+    const e = entities[i];
     if (e.state.status === 'building-barracks') { continue; }
-    e.state = { status: 'moving', targetX: payload.x, targetY: payload.y };
+    const t = targets[i] || { x: payload.x, y: payload.y };
+    e.state = { status: 'moving', targetX: t.x, targetY: t.y };
     e.lastCommand = 'move';
-    logger.log(`walk: entity=${e.id} target=(${payload.x},${payload.y})`);
+    logger.log(`walk: entity=${e.id} target=(${t.x},${t.y})`);
   }
 }
