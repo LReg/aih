@@ -52,6 +52,15 @@ export class Game {
     }
   }
 
+  destroy() {
+    this.actionQueue.length = 0;
+    this.map.entities.clear();
+    this.map.tiles.clear();
+    this.players.length = 0;
+    this.winners.length = 0;
+    this.losers.length = 0;
+  }
+
   toJSON() {
     return {
       id: this.id,

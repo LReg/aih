@@ -116,7 +116,12 @@ export class GameService {
       game.winners = winners;
       game.state = 'finished';
       this.stopTick(game.id);
-      this.gameDao.saveGame(game);
+      this.gameGateway.broadcastGameEnd(game);
+      this.gameGateway.broadcastStateUpdate(game);
+      this.gameGateway.disconnectGameRoom(game.id);
+      this.gameDao.removeGame(game.id);
+      game.destroy();
+      return;
     }
 
     this.gameGateway.broadcastStateUpdate(game);

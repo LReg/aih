@@ -1,10 +1,17 @@
-import { Routes } from '@angular/router';
+import { Routes, Router } from '@angular/router';
+import { inject } from '@angular/core';
 import {LoginComponent} from "./components/login/login.component";
 import {RegisterComponent} from "./components/register/register.component";
 import {HomeComponent} from "./components/home/home.component";
 import {GameComponent} from "./components/game/game.component";
 import {LobbyComponent} from "./components/lobby/lobby.component";
 import {isLoggedIn} from "./security/IsLoggedIn";
+import { environment } from '../environments/environment';
+
+function registrationEnabled() {
+  if (environment.features.registration) return true;
+  return inject(Router).createUrlTree(['/login']);
+}
 
 export const routes: Routes = [
   {
@@ -14,6 +21,7 @@ export const routes: Routes = [
   {
     path: 'register',
     component: RegisterComponent,
+    canActivate: [registrationEnabled],
   },
   {
     path: '',

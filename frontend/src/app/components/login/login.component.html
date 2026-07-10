@@ -7,41 +7,49 @@
     </div>
 
     <div *ngIf="!(authService.loggedIn | async); else loggedIn">
-      <div class="tab-bar">
-        <button class="tab" [class.active]="!useLocal" (click)="useLocal = false">SSO Login</button>
-        <button class="tab" [class.active]="useLocal" (click)="useLocal = true">Local Account</button>
-      </div>
+      @if (env.features.sso) {
+        <div class="tab-bar">
+          <button class="tab" [class.active]="!useLocal" (click)="useLocal = false">SSO Login</button>
+          <button class="tab" [class.active]="useLocal" (click)="useLocal = true">Guest</button>
+        </div>
+      }
 
-      <div *ngIf="!useLocal" class="tab-content">
-        <p class="tab-desc">Sign in with your Authelia account</p>
-        <button class="btn btn-primary" (click)="authService.login()">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-          Sign in with SSO
-        </button>
-        <p class="register-link">Don't have an account? <a routerLink="/register">Create one</a></p>
-      </div>
-
-      <div *ngIf="useLocal" class="tab-content">
-        <p class="tab-desc">Play without an account — just pick a name</p>
-        <form (ngSubmit)="loginLocal()" class="local-form">
-          <div class="input-group">
-            <input
-              [(ngModel)]="localUsername"
-              name="username"
-              type="text"
-              class="text-input"
-              placeholder="Enter your username"
-              autocomplete="off"
-              maxlength="24"
-              required
-            />
-          </div>
-          <button type="submit" class="btn btn-primary" [class.btn-disabled]="!localUsername.trim()">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            Play as Guest
+      @if (env.features.sso && !useLocal) {
+        <div class="tab-content">
+          <p class="tab-desc">Sign in with your Authelia account</p>
+          <button class="btn btn-primary" (click)="authService.login()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+            Sign in with SSO
           </button>
-        </form>
-      </div>
+          @if (env.features.registration) {
+            <p class="register-link">Don't have an account? <a routerLink="/register">Create one</a></p>
+          }
+        </div>
+      }
+
+      @if (!env.features.sso || useLocal) {
+        <div class="tab-content">
+          <p class="tab-desc">Play without an account — just pick a guest name</p>
+          <form (ngSubmit)="loginLocal()" class="local-form">
+            <div class="input-group">
+              <input
+                [(ngModel)]="localUsername"
+                name="username"
+                type="text"
+                class="text-input"
+                placeholder="Enter guest name"
+                autocomplete="off"
+                maxlength="24"
+                required
+              />
+            </div>
+            <button type="submit" class="btn btn-primary" [class.btn-disabled]="!localUsername.trim()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              Play as Guest
+            </button>
+          </form>
+        </div>
+      }
     </div>
 
     <ng-template #loggedIn>

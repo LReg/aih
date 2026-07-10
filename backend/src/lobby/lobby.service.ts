@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger, forwardRef } from '@nestjs/common';
 import { Lobby } from './lobby';
 import { LobbyGateway } from './lobby.gateway';
 import { GameService } from '../game/game.service';
@@ -11,6 +11,7 @@ export class LobbyService {
   private readonly logger = new Logger(LobbyService.name);
 
   constructor(
+    @Inject(forwardRef(() => LobbyGateway))
     private lobbyGateway: LobbyGateway,
     private gameService: GameService,
   ) {}

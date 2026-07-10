@@ -18,7 +18,6 @@ export const isLoggedIn: CanActivateFn = (
   const auth = inject(AuthService);
   const router = inject(Router);
   if (!auth) {
-    console.log('auth service not available');
     return router.createUrlTree(['/login']);
   }
   if (auth.isLocalAuth()) {
@@ -30,9 +29,9 @@ export const isLoggedIn: CanActivateFn = (
     map(loggedIn => {
       if (loggedIn) {
         return true;
-      } else {
-        return router.createUrlTree(['/login']);
       }
+      sessionStorage.setItem('returnUrl', state.url);
+      return router.createUrlTree(['/login']);
     })
   );
 }

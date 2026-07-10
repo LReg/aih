@@ -2,18 +2,26 @@ import {
   WebSocketGateway,
   WebSocketServer,
   OnGatewayConnection,
+  OnGatewayDisconnect,
   SubscribeMessage,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Game } from './game';
 
 @WebSocketGateway({ namespace: 'game', cors: { origin: '*' } })
-export class GameGateway implements OnGatewayConnection {
+export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
 
+  private socketUserMap = new Map<string, string>();
+
   handleConnection(client: Socket) {
-    console.log(`Game client connected: ${client.id}`);
+    const userId = client.handshake.auth?.userId as string | undefined;
+    if (userId) this.socketUserMap.set(client.id, userId);
+  }
+
+  handleDisconnect(client: Socket) {
+    this.socketUserMap.delete(client.id);
   }
 
   @SubscribeMessage('joinGame')
@@ -34,7 +42,24 @@ export class GameGateway implements OnGatewayConnection {
     });
   }
 
+  broadcastGameEnd(game: Game) {
+    this.server.to(game.id).emit('gameEnded', {
+      gameId: game.id,
+      winners: game.winners,
+    });
+  }
+
   broadcastStateUpdate(game: Game) {
     this.server.to(game.id).emit('stateUpdate', game.toJSON());
+  }
+
+  disconnectGameRoom(gameId: string) {
+    this.server.to(gameId).emit('gameTerminated', { gameId });
+    const room = this.server.sockets.adapter.rooms.get(gameId);
+    if (!room) return;
+    for (const socketId of room) {
+      const sock = this.server.sockets.sockets.get(socketId);
+      sock?.leave(gameId);
+    }
   }
 }

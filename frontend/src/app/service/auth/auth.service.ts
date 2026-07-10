@@ -35,10 +35,14 @@ export class AuthService {
     this.oidcSecurityService
       .checkAuth()
       .subscribe((loginResponse: LoginResponse) => {
-        console.log('login response', loginResponse);
         this.initialized.next(true);
         if (loginResponse.isAuthenticated) {
           this.loggedIn.next(true);
+          const returnUrl = sessionStorage.getItem('returnUrl');
+          if (returnUrl) {
+            sessionStorage.removeItem('returnUrl');
+            this.router.navigateByUrl(returnUrl);
+          }
         }
       });
   }
