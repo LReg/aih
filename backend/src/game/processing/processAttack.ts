@@ -5,7 +5,7 @@ import { PathCache } from '../algorithms/movement/pathCache';
 import { GAMEMODE_CONFIGS } from '../gamemode.config';
 import { isPeaceTime } from '../algorithms/isPeaceTime';
 import { findNearestEnemy } from '../algorithms/findNearestEnemy';
-import { resolveEntityCombat } from '../actions/attack.action';
+import { resolveEntityCombat } from '../algorithms/resolveEntityCombat';
 
 export function processAttack(game: Game, pathCache: PathCache): void {
   if (isPeaceTime(game)) return;
