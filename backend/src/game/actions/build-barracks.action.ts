@@ -12,7 +12,6 @@ export function buildBarracksAction(game: Game, action: QueuedAction): void {
     const entity = game.map.entities.get(entityId);
     if (!entity) { logger.warn(`build: entity=${entityId} not found`); continue; }
     if (entity.ownerId !== action.playerId) { logger.warn(`build: entity=${entityId} owner mismatch`); continue; }
-    if (entity.state.status !== 'idle') { logger.warn(`build: entity=${entityId} not idle`); continue; }
     if (entity.type !== 'soldier') { logger.warn(`build: entity=${entityId} not soldier`); continue; }
 
     const adj = game.map.findNearestEmptyTileAvoidBarracks(entity.x, entity.y);

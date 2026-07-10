@@ -16,7 +16,9 @@ import { environment } from '../../../environments/environment';
     <div class="lobby">
       <header class="lobby-header">
         <h1>Strat</h1>
-        <button class="logout-btn" (click)="logout()">Logout</button>
+        @if (authService.isLocalAuth()) {
+          <button class="logout-btn" (click)="logout()">Logout</button>
+        }
       </header>
 
       <section class="content">

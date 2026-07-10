@@ -22,4 +22,8 @@ export class GameApiService {
   getGame(gameId: string) {
     return this.http.get<GameState>(`${environment.apiUrl}/game/${gameId}`);
   }
+
+  register(email: string, name: string, password: string) {
+    return this.http.post<{ success: boolean; message: string }>(`${environment.apiUrl}/auth/register`, { email, name, password });
+  }
 }

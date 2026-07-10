@@ -57,6 +57,22 @@ class MinHeap {
   }
 }
 
+function reconstructPath(
+  cameFrom: Map<number, { x: number; y: number } | null>,
+  key: (x: number, y: number) => number,
+  toX: number,
+  toY: number,
+): { x: number; y: number }[] {
+  const path: { x: number; y: number }[] = [];
+  let c: { x: number; y: number } | null = { x: toX, y: toY };
+  while (c) {
+    path.unshift(c);
+    const p = cameFrom.get(key(c.x, c.y));
+    c = p || null;
+  }
+  return path;
+}
+
 export function findPath(
   fromX: number,
   fromY: number,
@@ -79,6 +95,9 @@ export function findPath(
   cameFrom.set(startKey, null);
   open.push({ x: fromX, y: fromY, f: manhattan({ x: fromX, y: fromY }, { x: toX, y: toY }) });
 
+  let bestNode = { x: fromX, y: fromY };
+  let bestDist = manhattan({ x: fromX, y: fromY }, { x: toX, y: toY });
+
   while (open.size > 0) {
     const cur = open.pop()!;
     const curKey = key(cur.x, cur.y);
@@ -86,15 +105,14 @@ export function findPath(
     if (closed.has(curKey)) continue;
     closed.add(curKey);
 
+    const curDist = manhattan({ x: cur.x, y: cur.y }, { x: toX, y: toY });
+    if (curDist < bestDist) {
+      bestDist = curDist;
+      bestNode = { x: cur.x, y: cur.y };
+    }
+
     if (cur.x === toX && cur.y === toY) {
-      const path: { x: number; y: number }[] = [];
-      let c: { x: number; y: number } | null = { x: toX, y: toY };
-      while (c) {
-        path.unshift(c);
-        const p = cameFrom.get(key(c.x, c.y));
-        c = p || null;
-      }
-      return path;
+      return reconstructPath(cameFrom, key, toX, toY);
     }
 
     const curG = gScore.get(curKey)!;
@@ -118,5 +136,5 @@ export function findPath(
     }
   }
 
-  return null;
+  return reconstructPath(cameFrom, key, bestNode.x, bestNode.y);
 }

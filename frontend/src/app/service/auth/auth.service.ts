@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { Router } from '@angular/router';
 import {LoginResponse, OidcSecurityService} from "angular-auth-oidc-client";
 import {BehaviorSubject, Observable, of} from "rxjs";
 
@@ -14,7 +15,10 @@ export class AuthService {
   public localUsername: string | null = null;
   public localUuid: string | null = null;
 
-  constructor(private oidcSecurityService: OidcSecurityService) {
+  constructor(
+    private oidcSecurityService: OidcSecurityService,
+    private router: Router,
+  ) {
     this.restoreLocalSession();
     this.configure();
   }
@@ -60,6 +64,7 @@ export class AuthService {
       this.localUuid = null;
       this.localUsername = null;
       this.loggedIn.next(false);
+      this.router.navigate(['/login']);
       return;
     }
     this.oidcSecurityService

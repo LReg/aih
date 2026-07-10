@@ -6,14 +6,23 @@ export function findNearestEnemy(game: Game, entity: Entity, range: number): Ent
   let nearest: Entity | null = null;
   let nearestDist = Infinity;
 
-  for (const other of game.map.entities.values()) {
-    if (other.ownerId === entity.ownerId) continue;
-    if (other.type !== 'soldier' && other.type !== 'barracks') continue;
-    const dist = manhattan(entity, other);
-    if (dist > range) continue;
-    if (dist < nearestDist) {
-      nearestDist = dist;
-      nearest = other;
+  for (let dx = -range; dx <= range; dx++) {
+    for (let dy = -range; dy <= range; dy++) {
+      const dist = Math.abs(dx) + Math.abs(dy);
+      if (dist > range) continue;
+
+      const nx = entity.x + dx;
+      const ny = entity.y + dy;
+      if (!game.map.isInBounds(nx, ny)) continue;
+
+      const other = game.map.getEntityAt(nx, ny);
+      if (!other) continue;
+      if (other.ownerId === entity.ownerId) continue;
+      if (other.type !== 'soldier' && other.type !== 'barracks') continue;
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearest = other;
+      }
     }
   }
 

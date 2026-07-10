@@ -1,0 +1,91 @@
+<div class="register-page">
+  <div class="register-card">
+    <div class="register-header">
+      <div class="logo">S</div>
+      <h1>Strat</h1>
+      <p class="subtitle">Create your account</p>
+    </div>
+
+    @if (success) {
+      <div class="success-state">
+        <div class="checkmark">&#10003;</div>
+        <p class="success-text">Account created!</p>
+        <p class="success-desc">You can now sign in with your credentials.</p>
+        <a routerLink="/login" class="btn btn-primary">Sign In</a>
+      </div>
+    } @else {
+      <form (ngSubmit)="submit()" class="register-form">
+        @if (error) {
+          <div class="error-msg">{{ error }}</div>
+        }
+
+        <div class="input-group">
+          <input
+            [(ngModel)]="email"
+            name="email"
+            type="email"
+            class="text-input"
+            placeholder="Email"
+            autocomplete="email"
+            required
+          />
+        </div>
+
+        <div class="input-group">
+          <input
+            [(ngModel)]="name"
+            name="name"
+            type="text"
+            class="text-input"
+            placeholder="Display name (optional)"
+            autocomplete="name"
+          />
+        </div>
+
+        <div class="input-group">
+          <input
+            [(ngModel)]="password"
+            name="password"
+            type="password"
+            class="text-input"
+            placeholder="Password"
+            autocomplete="new-password"
+            minlength="8"
+            required
+          />
+        </div>
+
+        <div class="input-group">
+          <input
+            [(ngModel)]="confirmPassword"
+            name="confirmPassword"
+            type="password"
+            class="text-input"
+            placeholder="Confirm password"
+            autocomplete="new-password"
+            minlength="8"
+            required
+          />
+        </div>
+
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [class.btn-disabled]="loading"
+          [disabled]="loading"
+        >
+          @if (loading) {
+            Creating account...
+          } @else {
+            Create Account
+          }
+        </button>
+      </form>
+
+      <p class="login-link">
+        Already have an account?
+        <a routerLink="/login">Sign in</a>
+      </p>
+    }
+  </div>
+</div>
