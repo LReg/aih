@@ -22,10 +22,12 @@ export function getSpreadPositions(
   const startX = centerX - 1;
   const startY = centerY - 3;
 
-  for (let maxDim = 0; result.length < count; maxDim++) {
-    for (let bx = 0; bx <= maxDim && result.length < count; bx++) {
-      for (let by = 0; by <= maxDim && result.length < count; by++) {
-        if (bx !== maxDim && by !== maxDim) continue;
+  for (let layer = 0; ; layer++) {
+    let blocksAdded = 0;
+
+    for (let bx = -layer; bx <= layer; bx++) {
+      for (let by = -layer; by <= layer; by++) {
+        if (Math.abs(bx) !== layer && Math.abs(by) !== layer) continue;
 
         const baseX = startX + bx * STRIDE_COL;
         const baseY = startY + by * STRIDE_ROW;
@@ -42,17 +44,22 @@ export function getSpreadPositions(
         }
 
         if (!blockValid) continue;
+        blocksAdded++;
+        if (result.length >= count) return result;
 
-        for (let c = 0; c < BLOCK_COLS && result.length < count; c++) {
-          for (let r = 0; r < BLOCK_ROWS && result.length < count; r++) {
+        for (let c = 0; c < BLOCK_COLS; c++) {
+          for (let r = 0; r < BLOCK_ROWS; r++) {
             const nx = baseX + c;
             const ny = baseY + r;
             if (result.length > 0 && nx === centerX && ny === centerY) continue;
             result.push({ x: nx, y: ny });
+            if (result.length >= count) return result;
           }
         }
       }
     }
+
+    if (blocksAdded === 0) break;
   }
 
   return result;
