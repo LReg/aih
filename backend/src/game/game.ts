@@ -36,6 +36,7 @@ export class Game {
   tickRateMs: number = 500;
   actionQueue: QueuedAction[] = [];
   winners: string[] = [];
+  losers: string[] = [];
   playerColors: Record<string, string>;
 
   constructor(
@@ -69,6 +70,7 @@ export class Game {
       playerColors: this.playerColors,
       state: this.state,
       winners: this.winners,
+      losers: this.losers,
       createdAt: this.createdAt,
     };
   }

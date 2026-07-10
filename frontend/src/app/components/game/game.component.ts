@@ -21,8 +21,24 @@ import { GameScene } from './scenes/game-scene';
         }
         <span class="player-label" [style.color]="playerColor">{{ playerName }}</span>
         <span class="game-tick">Tick {{ gameTick }}</span>
+        @if (!gameFinished) {
+          <button class="btn-surrender" (click)="showSurrenderModal = true">Give Up</button>
+        }
       </div>
       <div #phaserContainer class="phaser-container"></div>
+
+      @if (showSurrenderModal) {
+        <div class="modal-overlay" (click)="showSurrenderModal = false">
+          <div class="modal" (click)="$event.stopPropagation()">
+            <h2>Give Up?</h2>
+            <p>All your units will be removed and you will leave the game.</p>
+            <div class="modal-actions">
+              <button class="mbtn cancel" (click)="showSurrenderModal = false">Cancel</button>
+              <button class="mbtn confirm" (click)="surrender()">Give Up</button>
+            </div>
+          </div>
+        </div>
+      }
 
       @if (gameFinished) {
         <div class="game-over">
@@ -175,6 +191,36 @@ import { GameScene } from './scenes/game-scene';
     .winner { color: #5ce75c; font-weight: 700; }
     .loser { color: #ff4444; font-weight: 700; }
     .winners-list { color: #9090b0; font-size: 14px !important; }
+    .btn-surrender {
+      padding: 4px 12px; border: 1px solid #4a2020; border-radius: 4px;
+      background: transparent; color: #ef4444; cursor: pointer;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
+      transition: background .15s;
+    }
+    .btn-surrender:hover { background: rgba(239, 68, 68, 0.12); }
+
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.7);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 3000;
+    }
+    .modal {
+      background: #1a1a2e; border: 1px solid #2a2a45; border-radius: 10px;
+      padding: 24px; max-width: 340px; width: 90%;
+      box-shadow: 0 8px 32px rgba(0,0,0,.5);
+    }
+    .modal h2 { margin: 0 0 8px; font-size: 18px; color: #e8e8f0; }
+    .modal p { margin: 0 0 20px; font-size: 13px; color: #9090b0; line-height: 1.5; }
+    .modal-actions { display: flex; gap: 10px; }
+    .mbtn {
+      flex: 1; padding: 10px; border-radius: 6px; cursor: pointer;
+      font-size: 14px; font-weight: 600; border: none; min-height: 44px;
+    }
+    .mbtn.cancel { background: #2a2a45; color: #c0c0d0; }
+    .mbtn.cancel:hover { background: #3a3a55; }
+    .mbtn.confirm { background: #ef4444; color: #fff; }
+    .mbtn.confirm:hover { opacity: .85; }
+
     .btn-leave {
       margin-top: 16px; padding: 8px 24px;
       border: 1px solid #e74c3c; border-radius: 6px;
@@ -197,6 +243,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   selectedEntities: Entity[] = [];
   targetingMode: 'walk' | 'attack' | null = null;
   gameFinished = false;
+  showSurrenderModal = false;
   winners: string[] = [];
   isWinner = false;
   gameTick = 0;
@@ -387,6 +434,12 @@ export class GameComponent implements AfterViewInit, OnDestroy {
       next: (res) => console.log(`[GameComponent] build accepted: id=${res.actionId}`),
       error: (err) => console.error('[GameComponent] build error:', err),
     });
+  }
+
+  surrender() {
+    this.showSurrenderModal = false;
+    this.api.submitAction(this.gameId, 'surrender', {}).subscribe();
+    this.router.navigate(['/']);
   }
 
   leaveGame() { this.router.navigate(['/']); }

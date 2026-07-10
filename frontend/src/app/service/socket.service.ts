@@ -2,24 +2,31 @@ import { Injectable, OnDestroy } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
 import { Observable, Subject } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { CountdownEvent, GameFoundEvent, GameState } from '../types/game.types';
+import { CountdownEvent, GameFoundEvent, GameState, LobbyData, LobbyStartedEvent } from '../types/game.types';
 
 @Injectable({ providedIn: 'root' })
 export class SocketService implements OnDestroy {
   private matchSocket: Socket | null = null;
   private gameSocket: Socket | null = null;
+  private lobbySocket: Socket | null = null;
 
   private tickSubject = new Subject<CountdownEvent>();
   private cancelledSubject = new Subject<string>();
   private requeuedSubject = new Subject<string>();
   private gameFoundSubject = new Subject<GameFoundEvent>();
   private stateUpdateSubject = new Subject<GameState>();
+  private lobbyUpdateSubject = new Subject<LobbyData>();
+  private lobbyStartedSubject = new Subject<LobbyStartedEvent>();
+  private lobbyCancelledSubject = new Subject<{ lobbyId: string }>();
 
   countdownTick$: Observable<CountdownEvent> = this.tickSubject.asObservable();
   countdownCancelled$: Observable<string> = this.cancelledSubject.asObservable();
   requeued$: Observable<string> = this.requeuedSubject.asObservable();
   gameFound$: Observable<GameFoundEvent> = this.gameFoundSubject.asObservable();
   stateUpdate$: Observable<GameState> = this.stateUpdateSubject.asObservable();
+  lobbyUpdate$: Observable<LobbyData> = this.lobbyUpdateSubject.asObservable();
+  lobbyStarted$: Observable<LobbyStartedEvent> = this.lobbyStartedSubject.asObservable();
+  lobbyCancelled$: Observable<{ lobbyId: string }> = this.lobbyCancelledSubject.asObservable();
 
   private readonly socketPath = environment.apiUrl.endsWith('/api') ? '/api/socket.io' : '/socket.io';
 
@@ -79,13 +86,51 @@ export class SocketService implements OnDestroy {
     this.gameSocket?.emit('leaveGame', gameId);
   }
 
+  connectLobby(userId: string) {
+    if (this.lobbySocket?.connected) return;
+    this.lobbySocket = io(`${this.socketHost}/lobby`, {
+      path: this.socketPath,
+      transports: ['websocket'],
+      auth: { userId },
+    });
+
+    this.lobbySocket.on('lobbyUpdate', (data: LobbyData) => {
+      this.lobbyUpdateSubject.next(data);
+    });
+
+    this.lobbySocket.on('lobbyStarted', (data: LobbyStartedEvent) => {
+      this.lobbyStartedSubject.next(data);
+    });
+
+    this.lobbySocket.on('lobbyCancelled', (data: { lobbyId: string }) => {
+      this.lobbyCancelledSubject.next(data);
+    });
+  }
+
+  disconnectLobby() {
+    this.lobbySocket?.disconnect();
+    this.lobbySocket = null;
+  }
+
+  joinLobbyRoom(lobbyId: string) {
+    this.lobbySocket?.emit('joinLobby', lobbyId);
+  }
+
+  leaveLobbyRoom(lobbyId: string) {
+    this.lobbySocket?.emit('leaveLobby', lobbyId);
+  }
+
   ngOnDestroy() {
     this.disconnectMatchmaking();
     this.disconnectGame();
+    this.disconnectLobby();
     this.tickSubject.complete();
     this.cancelledSubject.complete();
     this.requeuedSubject.complete();
     this.gameFoundSubject.complete();
     this.stateUpdateSubject.complete();
+    this.lobbyUpdateSubject.complete();
+    this.lobbyStartedSubject.complete();
+    this.lobbyCancelledSubject.complete();
   }
 }

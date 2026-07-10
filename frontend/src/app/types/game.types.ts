@@ -44,6 +44,7 @@ export interface GameState {
   playerColors: Record<string, string>;
   state: string;
   winners: string[];
+  losers: string[];
   createdAt: string;
 }
 
@@ -62,4 +63,27 @@ export interface GameFoundEvent {
 export interface ActionResponse {
   accepted: boolean;
   actionId?: string;
+}
+
+export interface LobbySettings {
+  gamemode: string;
+  maxPlayers: number;
+  mapWidth: number;
+  mapHeight: number;
+  tickRateMs: number;
+  peaceDurationMs: number;
+}
+
+export interface LobbyData {
+  id: string;
+  hostId: string;
+  players: string[];
+  settings: LobbySettings;
+  createdAt: string;
+}
+
+export interface LobbyStartedEvent {
+  gameId: string;
+  players: string[];
+  gamemode: string;
 }

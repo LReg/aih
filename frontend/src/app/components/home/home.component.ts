@@ -22,6 +22,8 @@ import { environment } from '../../../environments/environment';
       </header>
 
       <section class="content">
+        <button class="create-lobby-btn" (click)="createLobby()">+ Create Lobby</button>
+
         <app-gamemode-select
           [state]="getQueueState('casual')" [config]="casualConfig"
           label="Casual" gamemode="casual"
@@ -79,6 +81,12 @@ import { environment } from '../../../environments/environment';
       cursor: pointer;
     }
     .logout-btn:hover { color: var(--danger); border-color: var(--danger); }
+    .create-lobby-btn {
+      padding: 12px; border: 2px dashed var(--accent); border-radius: 10px;
+      background: transparent; color: var(--accent); font-size: 15px; font-weight: 600;
+      cursor: pointer; text-align: center; transition: background .15s;
+    }
+    .create-lobby-btn:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
     .content {
       display: flex;
       flex-direction: column;
@@ -175,6 +183,12 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.countdownSeconds = 0;
       this.countdownPlayerCount = 0;
       this.countdownMaxPlayers = 0;
+    });
+  }
+
+  createLobby() {
+    this.api.createLobby().subscribe(res => {
+      this.router.navigate(['/lobby', res.lobbyId]);
     });
   }
 
