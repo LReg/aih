@@ -1,5 +1,6 @@
 import { Game } from '../game';
-import { Entity, manhattan } from '../game-map';
+import { Entity } from '../game-map';
+import { manhattan } from './findPath';
 
 export function findNearestEnemy(game: Game, entity: Entity, range: number): Entity | null {
   let nearest: Entity | null = null;

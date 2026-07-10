@@ -6,6 +6,7 @@ import { SocketService } from '../../service/socket.service';
 import { AuthService } from '../../service/auth/auth.service';
 import { GamemodeSelectComponent, GamemodeConfig, QueueState } from '../gamemode-select/gamemode-select.component';
 import { QueueStatusComponent } from '../queue-status/queue-status.component';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-home',
@@ -33,6 +34,13 @@ import { QueueStatusComponent } from '../queue-status/queue-status.component';
           [state]="getQueueState('slow')" [config]="slowConfig"
           label="Slow" gamemode="slow"
           (select)="joinQueue($event)"></app-gamemode-select>
+
+        @if (environment.baseUrl.includes('localhost')) {
+          <app-gamemode-select
+            [state]="getQueueState('test')" [config]="testConfig"
+            label="Test" gamemode="test"
+            (select)="joinQueue($event)"></app-gamemode-select>
+        }
 
         <app-queue-status
           [queued]="queuedGamemode !== null"
@@ -77,6 +85,7 @@ import { QueueStatusComponent } from '../queue-status/queue-status.component';
   `]
 })
 export class HomeComponent implements OnInit, OnDestroy {
+  environment = environment;
   queuedGamemode: string | null = null;
   countdownSeconds = 0;
   countdownPlayerCount = 0;
@@ -84,12 +93,14 @@ export class HomeComponent implements OnInit, OnDestroy {
   casualConfig: GamemodeConfig = { maxPlayers: 5, mapWidth: 100, mapHeight: 100, tickRateMs: 500 };
   massiveConfig: GamemodeConfig = { maxPlayers: 10, mapWidth: 400, mapHeight: 400, tickRateMs: 500 };
   slowConfig: GamemodeConfig = { maxPlayers: 5, mapWidth: 100, mapHeight: 100, tickRateMs: 1500 };
+  testConfig: GamemodeConfig = { maxPlayers: 5, mapWidth: 100, mapHeight: 100, tickRateMs: 250 };
 
   private getMaxPlayers(gamemode: string): number {
     switch (gamemode) {
       case 'casual': return this.casualConfig.maxPlayers;
       case 'massive': return this.massiveConfig.maxPlayers;
       case 'slow': return this.slowConfig.maxPlayers;
+      case 'test': return this.testConfig.maxPlayers;
       default: return 0;
     }
   }

@@ -6,6 +6,7 @@ export enum Gamemode {
   Casual = 'casual',
   Massive = 'massive',
   Slow = 'slow',
+  Test = 'test',
 }
 
 export type WinCondition = (game: Game) => string[];
@@ -43,7 +44,7 @@ const DEFAULT_WIN_CONDITION = composeWinConditions(
   timeLimitWinCondition,
 );
 
-export const GAMEMODE_CONFIGS: Record<Gamemode, GamemodeConfig> = {
+export const GAMEMODE_CONFIGS: Record<string, GamemodeConfig> = {
   [Gamemode.Casual]: {
     maxPlayers: 5,
     startMinPlayers: 2,
@@ -58,7 +59,7 @@ export const GAMEMODE_CONFIGS: Record<Gamemode, GamemodeConfig> = {
     soldierAttackRange: 1,
     soldierDetectRange: 5,
     soldierAttackBarracksKillChance: 0.25,
-    peaceDurationMs: 30000,
+    peaceDurationMs: 100000,
     winCondition: DEFAULT_WIN_CONDITION,
   },
   [Gamemode.Massive]: {
@@ -75,7 +76,7 @@ export const GAMEMODE_CONFIGS: Record<Gamemode, GamemodeConfig> = {
     soldierAttackRange: 1,
     soldierDetectRange: 5,
     soldierAttackBarracksKillChance: 0.25,
-    peaceDurationMs: 30000,
+    peaceDurationMs: 100000,
     winCondition: DEFAULT_WIN_CONDITION,
   },
   [Gamemode.Slow]: {
@@ -92,7 +93,24 @@ export const GAMEMODE_CONFIGS: Record<Gamemode, GamemodeConfig> = {
     soldierAttackRange: 1,
     soldierDetectRange: 5,
     soldierAttackBarracksKillChance: 0.25,
-    peaceDurationMs: 60000,
+    peaceDurationMs: 100000,
+    winCondition: DEFAULT_WIN_CONDITION,
+  },
+  [Gamemode.Test]: {
+    maxPlayers: 5,
+    startMinPlayers: 1,
+    startTimerSeconds: 10,
+    tickRateMs: 250,
+    maxDurationMs: 3600000,
+    mapWidth: 100,
+    mapHeight: 100,
+    barracksBuildTime: 60,
+    soldierProductionTime: 60,
+    soldierMoveRange: 3,
+    soldierAttackRange: 1,
+    soldierDetectRange: 5,
+    soldierAttackBarracksKillChance: 0.25,
+    peaceDurationMs: 10000,
     winCondition: DEFAULT_WIN_CONDITION,
   },
 };

@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { DIRS } from './algorithms/findPath';
 
 export type EntityType = 'soldier' | 'barracks';
 
@@ -29,14 +30,9 @@ export interface Entity {
   y: number;
   state: EntityState;
   lastCommand?: string;
+  path?: { x: number; y: number }[];
+  pathIndex?: number;
 }
-
-const DIRS = [
-  { dx: 0, dy: -1 },
-  { dx: 1, dy: 0 },
-  { dx: 0, dy: 1 },
-  { dx: -1, dy: 0 },
-];
 
 export function createSoldier(ownerId: string, x: number, y: number): Entity {
   return {
@@ -58,101 +54,6 @@ export function createBarracks(ownerId: string, x: number, y: number, tick: numb
     y,
     state: { status: 'building', startedAtTick: tick },
   };
-}
-
-export function manhattan(a: { x: number; y: number }, b: { x: number; y: number }): number {
-  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
-}
-
-export function findPath(
-  fromX: number,
-  fromY: number,
-  toX: number,
-  toY: number,
-  isBlocked: (x: number, y: number) => boolean,
-  maxW: number,
-  maxH: number,
-): { x: number; y: number }[] | null {
-  if (fromX === toX && fromY === toY) return [];
-
-  const visited = new Set<string>();
-  const prev = new Map<string, { x: number; y: number } | null>();
-  const queue: { x: number; y: number }[] = [];
-  const key = (x: number, y: number) => `${x},${y}`;
-
-  visited.add(key(fromX, fromY));
-  prev.set(key(fromX, fromY), null);
-  queue.push({ x: fromX, y: fromY });
-
-  while (queue.length > 0) {
-    const cur = queue.shift()!;
-    if (cur.x === toX && cur.y === toY) break;
-
-    for (const d of DIRS) {
-      const nx = cur.x + d.dx;
-      const ny = cur.y + d.dy;
-      const k = key(nx, ny);
-      if (nx < 0 || nx >= maxW || ny < 0 || ny >= maxH) continue;
-      if (visited.has(k)) continue;
-      if (isBlocked(nx, ny) && !(nx === toX && ny === toY)) continue;
-
-      visited.add(k);
-      prev.set(k, cur);
-      queue.push({ x: nx, y: ny });
-    }
-  }
-
-  if (!prev.has(key(toX, toY))) return null;
-
-  const path: { x: number; y: number }[] = [];
-  let cur: { x: number; y: number } | null = { x: toX, y: toY };
-  while (cur) {
-    path.unshift(cur);
-    const p = prev.get(key(cur.x, cur.y));
-    cur = p || null;
-  }
-
-  return path;
-}
-
-export function getSpreadPositions(
-  centerX: number,
-  centerY: number,
-  count: number,
-  isAvailable: (x: number, y: number) => boolean,
-  maxW: number,
-  maxH: number,
-): { x: number; y: number }[] {
-  const result: { x: number; y: number }[] = [];
-
-  if (count <= 0) return result;
-
-  if (isAvailable(centerX, centerY)) {
-    result.push({ x: centerX, y: centerY });
-  }
-
-  for (let ring = 1; result.length < count; ring++) {
-    let added = 0;
-
-    for (let dx = -ring; dx <= ring && result.length < count; dx++) {
-      for (let dy = -ring; dy <= ring && result.length < count; dy++) {
-        if (Math.abs(dx) !== ring && Math.abs(dy) !== ring) continue;
-
-        const nx = centerX + dx;
-        const ny = centerY + dy;
-        if (nx < 0 || nx >= maxW || ny < 0 || ny >= maxH) continue;
-        if (!isAvailable(nx, ny)) continue;
-
-        result.push({ x: nx, y: ny });
-        added++;
-      }
-    }
-
-    if (added === 0 && ring > 5) break;
-    if (ring > Math.max(maxW, maxH)) break;
-  }
-
-  return result;
 }
 
 export class GameMap {

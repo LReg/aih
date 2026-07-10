@@ -54,7 +54,7 @@ import { GameScene } from './scenes/game-scene';
                 {{ targetingMode === 'walk' ? 'Select destination' : 'Select target' }}
               </span>
               <button class="cbtn cancel" (click)="cancelTargeting()">&times; Cancel</button>
-            } @else if (selectedSoldiers > 0) {
+            } @else {
               <button class="cbtn" (click)="startWalk()">
                 <span class="keyhint">Q</span>
                 Move
@@ -63,12 +63,10 @@ import { GameScene } from './scenes/game-scene';
                 <span class="keyhint">W</span>
                 Attack
               </button>
-              @if (idleSoldiers > 0) {
-                <button class="cbtn" (click)="buildBarracks()">
-                  <span class="keyhint">E</span>
-                  Build
-                </button>
-              }
+              <button class="cbtn" (click)="buildBarracks()">
+                <span class="keyhint">E</span>
+                Build
+              </button>
             }
           </div>
         </div>
@@ -255,7 +253,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
         break;
       case 'e':
         if (this.targetingMode) this.cancelTargeting();
-        else if (this.idleSoldiers > 0) this.buildBarracks();
+        else this.buildBarracks();
         break;
       case 'escape':
         if (this.targetingMode) this.cancelTargeting();
@@ -311,7 +309,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     this.tickRateMs = state.tickRateMs;
     this.startedAt = state.startedAt;
     this.peaceUntil = state.peaceUntil;
-    this.elapsedTime = this.formatElapsed(state.tick, state.tickRateMs);
+    this.elapsedTime = this.formatElapsed(state.startedAt);
     this.gameScene.updateFromState(state);
     if (state.state === 'finished') {
       this.gameFinished = true;
@@ -322,8 +320,8 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  private formatElapsed(ticks: number, rateMs: number): string {
-    const totalMs = ticks * rateMs;
+  private formatElapsed(startedAt: number): string {
+    const totalMs = Math.max(0, Date.now() - startedAt);
     const totalSec = Math.floor(totalMs / 1000);
     const m = Math.floor(totalSec / 60);
     const s = totalSec % 60;
@@ -373,13 +371,8 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   }
 
   buildBarracks() {
-    if (!this.sceneReady) { console.warn('[GameComponent] build: scene not ready'); return; }
-    const soldiers = this.selectedEntities.filter(e => e.type === 'soldier' && e.state.status === 'idle');
-    if (soldiers.length === 0) { console.warn('[GameComponent] build: no idle soldiers'); return; }
-    const ids = soldiers.map(e => e.id);
-    console.log(`[GameComponent] build barracks: ${ids.length} idle soldiers`);
     this.api.submitAction(this.gameId, 'build_barracks', {
-      entityIds: ids,
+      entityIds: this.selectedEntities.map(e => e.id),
     }).subscribe({
       next: (res) => console.log(`[GameComponent] build accepted: id=${res.actionId}`),
       error: (err) => console.error('[GameComponent] build error:', err),
