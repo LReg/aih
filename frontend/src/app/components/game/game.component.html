@@ -1,0 +1,81 @@
+<div class="game-layout">
+  <div class="top-bar">
+    <div class="top-left">
+      <span class="game-timer">{{ elapsedTime }}</span>
+      @if (peaceRemaining > 0) {
+        <span class="peace-badge">Peace {{ peaceRemaining }}s</span>
+      }
+    </div>
+    <span class="player-label" [style.color]="playerColor">{{ playerName }}</span>
+    <div class="top-right">
+      <span class="game-tick">Tick {{ gameTick }}</span>
+      @if (!gameFinished) {
+        <button class="btn-surrender" (click)="showSurrenderModal = true">Give Up</button>
+      }
+    </div>
+  </div>
+
+  <div #phaserContainer class="phaser-container"></div>
+
+  @if (showSurrenderModal) {
+    <div class="modal-overlay" (click)="showSurrenderModal = false">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <h2>Give Up?</h2>
+        <p>All your units will be removed and you will leave the game.</p>
+        <div class="modal-actions">
+          <button class="mbtn cancel" (click)="showSurrenderModal = false">Cancel</button>
+          <button class="mbtn confirm" (click)="surrender()">Give Up</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (gameFinished) {
+    <div class="game-over">
+      <h2>Game Over</h2>
+      <p [class.winner]="isWinner" [class.loser]="!isWinner">
+        {{ isWinner ? 'You won!' : 'You lost' }}
+      </p>
+      <p class="winners-list">Winners: {{ winners.join(', ') }}</p>
+      <button class="btn-leave" (click)="leaveGame()">Leave Game</button>
+    </div>
+  }
+
+  @if (selectedEntities.length > 0 || targetingMode) {
+    <div class="cmd-bar">
+      <div class="cmd-left">
+        <span class="sel-count">{{ selectedEntities.length }}</span>
+        @if (selectedSoldiers > 0) {
+          <span class="sel-type">{{ selectedSoldiers }} <span class="dim">soldier</span></span>
+        }
+        @if (selectedBarracks > 0) {
+          <span class="sel-type">{{ selectedBarracks }} <span class="dim">barracks</span></span>
+        }
+        @if (hasBusy) {
+          <span class="sel-type busy">Occupied</span>
+        }
+      </div>
+      <div class="cmd-buttons">
+        @if (targetingMode) {
+          <span class="target-hint">
+            {{ targetingMode === 'walk' ? 'Select destination' : 'Select target' }}
+          </span>
+          <button class="cbtn cancel" (click)="cancelTargeting()">&times; Cancel</button>
+        } @else {
+          <button class="cbtn" (click)="startWalk()">
+            <span class="keyhint">Q</span>
+            Move
+          </button>
+          <button class="cbtn" (click)="startAttack()">
+            <span class="keyhint">W</span>
+            Attack
+          </button>
+          <button class="cbtn" (click)="buildBarracks()">
+            <span class="keyhint">E</span>
+            Build
+          </button>
+        }
+      </div>
+    </div>
+  }
+</div>

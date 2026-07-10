@@ -15,12 +15,12 @@ export function getSpreadPositions(
   if (result.length >= count) return result;
 
   const BLOCK_COLS = 2;
-  const BLOCK_ROWS = 6;
+  const BLOCK_ROWS = 3;
   const STRIDE_COL = BLOCK_COLS + 1;
   const STRIDE_ROW = BLOCK_ROWS + 1;
 
-  const startX = centerX - 1;
-  const startY = centerY - 3;
+  const startX = Math.max(0, Math.min(centerX - 1, maxW - BLOCK_COLS));
+  const startY = Math.max(0, Math.min(centerY - 3, maxH - BLOCK_ROWS));
 
   for (let layer = 0; ; layer++) {
     let blocksAdded = 0;
@@ -59,7 +59,7 @@ export function getSpreadPositions(
       }
     }
 
-    if (blocksAdded === 0) break;
+    if (blocksAdded === 0 && layer > 0) break;
   }
 
   return result;

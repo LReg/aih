@@ -13,19 +13,10 @@ export interface QueuedAction {
 }
 
 const COLORS = [
-  '#22c55e', '#eab308', '#ef4444', '#3b82f6',
-  '#a855f7', '#ec4899', '#14b8a6', '#f97316',
-  '#06b6d4', '#84cc16', '#8b5cf6', '#f43f5e',
+  '#ef4444', '#3b82f6', '#eab308', '#22c55e',
+  '#f97316', '#a855f7', '#14b8a6', '#ec4899',
+  '#84cc16', '#06b6d4', '#8b5cf6', '#f43f5e',
 ];
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 export class Game {
   readonly id: string = randomUUID();
@@ -45,10 +36,9 @@ export class Game {
     public readonly players: string[],
     public readonly createdAt: Date = new Date(),
   ) {
-    const shuffled = shuffle(COLORS);
     this.playerColors = {};
     for (let i = 0; i < players.length; i++) {
-      this.playerColors[players[i]] = shuffled[i % shuffled.length];
+      this.playerColors[players[i]] = COLORS[i % COLORS.length];
     }
   }
 
