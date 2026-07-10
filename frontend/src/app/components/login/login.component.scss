@@ -73,7 +73,7 @@ h1 {
 
 .tab {
   flex: 1;
-  padding: 10px;
+  padding: 12px;
   border: none;
   border-radius: 10px;
   background: transparent;
@@ -81,6 +81,7 @@ h1 {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
+  min-height: 44px;
   transition: all 200ms ease;
 }
 
@@ -120,6 +121,7 @@ h1 {
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
+  min-height: 48px;
   transition: all 200ms ease;
 }
 
@@ -147,9 +149,10 @@ h1 {
 .btn-ghost {
   background: transparent;
   color: var(--text-secondary);
-  padding: 10px;
+  padding: 12px;
   font-weight: 500;
   margin-top: 8px;
+  min-height: 44px;
 }
 
 .btn-ghost:hover {
@@ -173,9 +176,10 @@ h1 {
   border: 1px solid var(--card-border);
   border-radius: 12px;
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: 16px;
   outline: none;
   box-sizing: border-box;
+  min-height: 48px;
   transition: border-color 200ms ease, box-shadow 200ms ease;
 }
 

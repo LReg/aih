@@ -136,21 +136,21 @@ import { environment } from '../../../environments/environment';
   `,
   styles: [`
     .lobby-page {
-      max-width: 480px; margin: 0 auto; padding: 0 16px 24px;
-      min-height: 100vh; display: flex; flex-direction: column;
+      max-width: 480px; margin: 0 auto; padding: 0 env(safe-area-inset-right) 24px env(safe-area-inset-left);
+      min-height: 100dvh; min-height: 100vh; display: flex; flex-direction: column;
     }
     .topbar {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 0; border-bottom: 1px solid #2a2a45;
+      padding: 12px 16px; border-bottom: 1px solid #2a2a45;
     }
     .topbar-title { font-size: 18px; font-weight: 700; color: #e8e8f0; letter-spacing: 1px; }
     .topbar-back {
-      padding: 6px 14px; border: 1px solid #2a2a45; border-radius: 6px;
-      background: transparent; color: #9090b0; cursor: pointer; font-size: 13px;
+      padding: 10px 16px; border: 1px solid #2a2a45; border-radius: 8px;
+      background: transparent; color: #9090b0; cursor: pointer; font-size: 14px; min-height: 44px;
     }
     .topbar-back:hover { color: #e8e8f0; border-color: #3a3a55; }
 
-    .lobby-body { flex: 1; display: flex; flex-direction: column; gap: 16px; margin-top: 20px; }
+    .lobby-body { flex: 1; display: flex; flex-direction: column; gap: 16px; margin: 20px 16px 0; }
 
     .card {
       background: #141428; border: 1px solid #2a2a45; border-radius: 10px;
@@ -169,14 +169,14 @@ import { environment } from '../../../environments/environment';
     .card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
     .invite-row { display: flex; gap: 8px; }
     .invite-input {
-      flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid #2a2a45; border-radius: 6px;
-      background: #0d0d1a; color: #c0c0d0; font-size: 13px; outline: none;
+      flex: 1; min-width: 0; padding: 12px; border: 1px solid #2a2a45; border-radius: 8px;
+      background: #0d0d1a; color: #c0c0d0; font-size: 14px; outline: none; min-height: 44px;
     }
     .invite-input:focus { border-color: #6c5ce7; }
     .btn-copy {
-      flex-shrink: 0; padding: 10px 18px; border: none; border-radius: 6px;
-      background: #6c5ce7; color: #fff; cursor: pointer; font-size: 13px; font-weight: 500;
-      transition: background .15s; min-width: 72px;
+      flex-shrink: 0; padding: 12px 18px; border: none; border-radius: 8px;
+      background: #6c5ce7; color: #fff; cursor: pointer; font-size: 14px; font-weight: 500;
+      transition: background .15s; min-width: 72px; min-height: 44px;
     }
     .btn-copy:hover { background: #7c6cf7; }
     .btn-copy.copied { background: #22c55e; }
@@ -187,8 +187,8 @@ import { environment } from '../../../environments/environment';
     .player-list { display: flex; flex-direction: column; gap: 6px; }
     .player-row {
       display: flex; align-items: center; gap: 12px;
-      padding: 10px 12px; background: #0d0d1a; border-radius: 8px;
-      border: 1px solid #1e1e35; transition: border-color .15s;
+      padding: 12px 12px; background: #0d0d1a; border-radius: 8px;
+      border: 1px solid #1e1e35; transition: border-color .15s; min-height: 48px;
     }
     .player-row.is-host { border-color: #6c5ce7; }
     .player-avatar {
@@ -200,20 +200,20 @@ import { environment } from '../../../environments/environment';
     .player-name { flex: 1; font-size: 14px; color: #e8e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .host-badge {
       font-size: 10px; font-weight: 700; color: #6c5ce7; letter-spacing: 0.5px;
-      background: rgba(108, 92, 231, 0.15); padding: 3px 8px; border-radius: 4px;
+      background: rgba(108, 92, 231, 0.15); padding: 4px 8px; border-radius: 4px;
     }
 
     /* SETTINGS */
-    .readonly-hint { font-size: 11px; color: #7070a0; background: #0d0d1a; padding: 2px 8px; border-radius: 4px; }
+    .readonly-hint { font-size: 11px; color: #7070a0; background: #0d0d1a; padding: 4px 8px; border-radius: 4px; }
     .settings-grid { display: flex; flex-direction: column; gap: 14px; }
     .setting-field { display: flex; flex-direction: column; gap: 4px; }
     .setting-field label { font-size: 11px; font-weight: 600; color: #7070a0; text-transform: uppercase; letter-spacing: 0.5px; }
     .setting-field input, .setting-field select {
-      padding: 9px 12px; border: 1px solid #2a2a45; border-radius: 6px;
-      background: #0d0d1a; color: #e8e8f0; font-size: 14px; outline: none; min-height: 38px;
+      padding: 12px; border: 1px solid #2a2a45; border-radius: 8px;
+      background: #0d0d1a; color: #e8e8f0; font-size: 16px; outline: none; min-height: 48px;
     }
     .setting-field input:focus, .setting-field select:focus { border-color: #6c5ce7; }
-    .setting-val { font-size: 14px; color: #c0c0d0; padding: 9px 0; }
+    .setting-val { font-size: 14px; color: #c0c0d0; padding: 12px 0; }
     .setting-row { display: flex; align-items: center; gap: 8px; }
     .setting-row input { flex: 1; min-width: 0; text-align: center; }
     .setting-times { color: #7070a0; font-size: 16px; }
@@ -221,12 +221,12 @@ import { environment } from '../../../environments/environment';
     /* ACTIONS */
     .action-bar {
       display: flex; gap: 10px; padding: 16px 0 0;
-      border-top: 1px solid #2a2a45; margin-top: 4px;
+      border-top: 1px solid #2a2a45; margin: 4px 16px 0;
     }
     .btn {
-      padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer;
-      font-size: 14px; font-weight: 600; transition: background .15s, opacity .15s;
-      min-height: 44px;
+      padding: 14px 24px; border: none; border-radius: 8px; cursor: pointer;
+      font-size: 15px; font-weight: 600; transition: background .15s, opacity .15s;
+      min-height: 48px;
     }
     .btn-primary {
       flex: 1; background: linear-gradient(135deg, #6c5ce7, #a855f7); color: #fff;
@@ -238,6 +238,16 @@ import { environment } from '../../../environments/environment';
     }
     .btn-danger-outline:hover { background: rgba(239, 68, 68, 0.1); }
     .btn-full { flex: 1; }
+
+    @media (max-width: 480px) {
+      .lobby-page { padding: 0 0 16px; }
+      .lobby-body { margin: 16px 12px 0; }
+      .card { padding: 16px; }
+      .invite-row { flex-direction: column; }
+      .btn-copy { width: 100%; }
+      .action-bar { margin: 4px 12px 0; }
+      .action-bar { flex-direction: column; }
+    }
   `]
 })
 export class LobbyComponent implements OnInit, OnDestroy {

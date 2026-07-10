@@ -26,6 +26,10 @@ export class GameScene extends Phaser.Scene {
   private pendingButton: number | null = null;
   private playerId = '';
   private hasCentered = false;
+  private pinchDist = 0;
+  private isMobile = false;
+  private longPressTimer: number | null = null;
+  private isLongPressSelect = false;
 
   onSelectionChanged = new Subject<string[]>();
   onActionRequest = new Subject<{ action: string; entityIds: string[]; x: number; y: number }>();
@@ -241,7 +245,22 @@ export class GameScene extends Phaser.Scene {
   }
 
   private setupInput() {
+    this.isMobile = this.sys.game.device.input.touch;
+
+    const clearLongPress = () => {
+      if (this.longPressTimer !== null) { window.clearTimeout(this.longPressTimer); this.longPressTimer = null; }
+    };
+
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (this.isMobile && pointer.button === 0 && this.input.pointer1?.isDown && this.input.pointer2?.isDown) {
+        const p1 = this.input.pointer1;
+        const p2 = this.input.pointer2;
+        if (p1 && p2) {
+          this.pinchDist = Phaser.Math.Distance.Between(p1.x, p1.y, p2.x, p2.y);
+        }
+        return;
+      }
+
       this.pendingButton = pointer.button;
       if (pointer.button === 0) {
         if (this.targetingAction) {
@@ -254,6 +273,22 @@ export class GameScene extends Phaser.Scene {
           camX: this.cameras.main.scrollX, camY: this.cameras.main.scrollY,
         };
         this.isPanning = false;
+        this.isLongPressSelect = false;
+
+        if (this.isMobile) {
+          clearLongPress();
+          const wx = pointer.worldX;
+          const wy = pointer.worldY;
+          this.longPressTimer = window.setTimeout(() => {
+            this.longPressTimer = null;
+            this.isLongPressSelect = true;
+            this.isPanning = false;
+            this.leftDown = null;
+            this.dragStart = { wx, wy };
+            this.isDragging = true;
+            this.dragRect = null;
+          }, 500);
+        }
       } else if (pointer.button === 2) {
         this.dragStart = { wx: pointer.worldX, wy: pointer.worldY };
         this.isDragging = false;
@@ -262,7 +297,19 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
-      if (this.dragStart && this.pendingButton === 2) {
+      if (this.input.pointer1?.isDown && this.input.pointer2?.isDown && this.pinchDist > 0) {
+        const p1 = this.input.pointer1;
+        const p2 = this.input.pointer2;
+        const dist = Phaser.Math.Distance.Between(p1.x, p1.y, p2.x, p2.y);
+        const zoom = Phaser.Math.Clamp(this.cameras.main.zoom * (dist / this.pinchDist), 0.2, 6);
+        this.cameras.main.setZoom(zoom);
+        this.pinchDist = dist;
+        return;
+      }
+
+      const dragThreshold = this.isMobile ? 12 : 5;
+
+      if (this.dragStart && (this.pendingButton === 2 || this.isLongPressSelect)) {
         if (!this.isDragging) {
           const dx = pointer.worldX - this.dragStart.wx;
           const dy = pointer.worldY - this.dragStart.wy;
@@ -272,11 +319,13 @@ export class GameScene extends Phaser.Scene {
           this.dragRect = { x1: this.dragStart.wx, y1: this.dragStart.wy, x2: pointer.worldX, y2: pointer.worldY };
           this.drawSelectionRect(this.dragRect);
         }
+        return;
       }
       if (this.leftDown && this.pendingButton === 0 && !this.targetingAction) {
         const dx = Math.abs(pointer.x - this.leftDown.sx);
         const dy = Math.abs(pointer.y - this.leftDown.sy);
-        if (!this.isPanning && (dx > 5 || dy > 5)) this.isPanning = true;
+        if (this.isMobile && (dx > 8 || dy > 8)) clearLongPress();
+        if (!this.isPanning && (dx > dragThreshold || dy > dragThreshold)) this.isPanning = true;
         if (this.isPanning) {
           const cam = this.cameras.main;
           cam.scrollX = this.leftDown.camX + (this.leftDown.sx - pointer.x) / cam.zoom;
@@ -287,13 +336,27 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.input.on('pointerup', () => {
+      clearLongPress();
+      this.pinchDist = 0;
+
+      if (this.isLongPressSelect) {
+        if (this.isDragging && this.dragRect) this.finishDragSelect();
+        this.isLongPressSelect = false;
+        this.dragStart = null;
+        this.isDragging = false;
+        this.dragRect = null;
+        this.selectionRectGraphics.clear();
+        this.pendingButton = null;
+        return;
+      }
+
       if (this.pendingButton === 0) {
         if (this.leftDown && !this.isPanning && !this.targetingAction) {
           const tileX = Math.floor(this.leftDown.wx / TILE_SIZE);
           const tileY = Math.floor(this.leftDown.wy / TILE_SIZE);
           const entity = this.entityAt(tileX, tileY);
           if (entity && entity.ownerId === this.playerId) {
-            if (this.shiftKey.isDown) {
+            if (this.shiftKey && this.shiftKey.isDown) {
               if (this.selectedIds.has(entity.id)) this.selectedIds.delete(entity.id);
               else this.selectedIds.add(entity.id);
             } else {
@@ -318,7 +381,9 @@ export class GameScene extends Phaser.Scene {
       this.pendingButton = null;
     });
 
-    this.input.mouse!.disableContextMenu();
+    if (!this.isMobile) {
+      this.input.mouse!.disableContextMenu();
+    }
     this.input.keyboard!.on('keydown-ESC', () => {
       if (this.targetingAction) this.cancelTargeting();
     });

@@ -25,12 +25,13 @@ body {
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  min-height: 100dvh;
   min-height: 100vh;
 }
 
-button {
+input, select, textarea, button {
   font-family: inherit;
-  font-size: 14px;
+  font-size: 16px;
   transition: background .2s, color .2s, border-color .2s;
 }
 

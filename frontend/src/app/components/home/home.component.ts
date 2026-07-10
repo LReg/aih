@@ -60,7 +60,8 @@ import { environment } from '../../../environments/environment';
     .lobby {
       max-width: 600px;
       margin: 0 auto;
-      padding: 24px 16px;
+      padding: 24px 16px env(safe-area-inset-bottom);
+      min-height: 100dvh;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -73,18 +74,19 @@ import { environment } from '../../../environments/environment';
     }
     h1 { margin: 0; font-size: 28px; color: var(--text-primary); }
     .logout-btn {
-      padding: 6px 16px;
+      padding: 10px 18px;
       border: 1px solid var(--border);
       border-radius: 8px;
       background: transparent;
       color: var(--text-secondary);
       cursor: pointer;
+      font-size: 14px; min-height: 44px;
     }
     .logout-btn:hover { color: var(--danger); border-color: var(--danger); }
     .create-lobby-btn {
-      padding: 12px; border: 2px dashed var(--accent); border-radius: 10px;
+      padding: 14px; border: 2px dashed var(--accent); border-radius: 10px;
       background: transparent; color: var(--accent); font-size: 15px; font-weight: 600;
-      cursor: pointer; text-align: center; transition: background .15s;
+      cursor: pointer; text-align: center; transition: background .15s; min-height: 48px;
     }
     .create-lobby-btn:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
     .content {

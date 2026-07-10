@@ -15,15 +15,19 @@ import { GameScene } from './scenes/game-scene';
   template: `
     <div class="game-layout">
       <div class="top-bar">
-        <span class="game-timer">{{ elapsedTime }}</span>
-        @if (peaceRemaining > 0) {
-          <span class="peace-badge">Peace {{ peaceRemaining }}s</span>
-        }
+        <div class="top-left">
+          <span class="game-timer">{{ elapsedTime }}</span>
+          @if (peaceRemaining > 0) {
+            <span class="peace-badge">Peace {{ peaceRemaining }}s</span>
+          }
+        </div>
         <span class="player-label" [style.color]="playerColor">{{ playerName }}</span>
-        <span class="game-tick">Tick {{ gameTick }}</span>
-        @if (!gameFinished) {
-          <button class="btn-surrender" (click)="showSurrenderModal = true">Give Up</button>
-        }
+        <div class="top-right">
+          <span class="game-tick">Tick {{ gameTick }}</span>
+          @if (!gameFinished) {
+            <button class="btn-surrender" (click)="showSurrenderModal = true">Give Up</button>
+          }
+        </div>
       </div>
       <div #phaserContainer class="phaser-container"></div>
 
@@ -92,71 +96,69 @@ import { GameScene } from './scenes/game-scene';
   `,
   styles: [`
     .game-layout {
-      width: 100vw; height: 100vh;
+      width: 100vw; height: 100dvh; height: 100vh;
       display: flex; flex-direction: column;
       background: #1a1a2e; overflow: hidden;
     }
     .top-bar {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 6px 16px;
+      padding: 8px 16px;
       background: #0d0d1a;
       border-bottom: 1px solid #2a2a45;
-      min-height: 36px;
+      min-height: 48px; gap: 8px;
+    }
+    .top-left, .top-right {
+      display: flex; align-items: center; gap: 8px;
     }
     .game-timer {
       font-size: 15px; font-weight: 600;
       color: #e8e8f0; font-variant-numeric: tabular-nums;
-      letter-spacing: 0.5px;
     }
-    .game-tick {
-      font-size: 12px; color: #7070a0;
-      font-variant-numeric: tabular-nums;
-    }
+    .game-tick { font-size: 12px; color: #7070a0; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .player-label {
-      font-size: 13px; font-weight: 600;
-      letter-spacing: 0.3px;
-      text-shadow: 0 0 6px currentColor;
+      font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      letter-spacing: 0.3px; text-shadow: 0 0 6px currentColor;
     }
     .peace-badge {
-      font-size: 12px; font-weight: 600;
+      font-size: 11px; font-weight: 600;
       color: #5ce75c; background: #1a3a1a;
       border: 1px solid #2a5a2a;
-      border-radius: 4px; padding: 2px 8px;
-      font-variant-numeric: tabular-nums;
+      border-radius: 4px; padding: 3px 6px;
+      font-variant-numeric: tabular-nums; white-space: nowrap;
     }
     .phaser-container { flex: 1; min-height: 0; }
 
     .cmd-bar {
       display: flex; align-items: center;
       justify-content: space-between;
-      padding: 6px 16px;
+      padding: 8px env(safe-area-inset-right) 8px env(safe-area-inset-left);
       background: linear-gradient(180deg, #0d0d1a 0%, #141428 100%);
       border-top: 1px solid #2a2a45;
       box-shadow: 0 -2px 8px rgba(0,0,0,.4);
-      min-height: 48px; gap: 12px;
+      min-height: 52px; gap: 8px;
     }
-    .cmd-left { display: flex; align-items: center; gap: 8px; }
+    .cmd-left { display: flex; align-items: center; gap: 6px; min-width: 0; flex-shrink: 1; overflow: hidden; }
     .sel-count {
       font-size: 18px; font-weight: 700;
-      color: #e8e8f0; min-width: 28px; text-align: center;
+      color: #e8e8f0; min-width: 24px; text-align: center;
     }
-    .sel-type { font-size: 13px; color: #e8e8f0; }
+    .sel-type { font-size: 12px; color: #e8e8f0; white-space: nowrap; }
     .sel-type .dim { color: #7070a0; font-weight: 400; }
     .sel-type.busy { color: #ff8800; font-weight: 600; }
 
-    .cmd-buttons { display: flex; align-items: center; gap: 6px; }
+    .cmd-buttons { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 
     .cbtn {
       position: relative;
       display: flex; flex-direction: column; align-items: center;
-      padding: 5px 16px 4px;
+      padding: 8px 14px 6px;
       border: 1px solid #2a2a45;
-      border-radius: 4px;
+      border-radius: 6px;
       background: #1a1a2e;
       color: #c0c0d0;
-      font-size: 12px; font-weight: 500;
+      font-size: 13px; font-weight: 500;
       cursor: pointer;
-      min-width: 60px;
+      min-width: 56px; min-height: 44px;
       transition: background .1s, border-color .1s, color .1s;
     }
     .cbtn:hover:not(.disabled) { background: #2a2a45; border-color: #6c5ce7; color: #e8e8f0; }
@@ -165,19 +167,49 @@ import { GameScene } from './scenes/game-scene';
     .cbtn.cancel:hover { background: #2a1515; }
 
     .keyhint {
-      position: absolute; top: -7px; right: -7px;
+      position: absolute; top: -5px; right: -5px;
       font-size: 9px; font-weight: 700;
       background: #2a2a45; color: #6c5ce7;
       border: 1px solid #3a3a55;
       border-radius: 3px;
-      padding: 0 4px; line-height: 14px;
+      padding: 1px 5px; line-height: 14px;
       min-width: 16px; text-align: center;
     }
 
     .target-hint {
       font-size: 12px; color: #ffcc00; font-weight: 500;
-      margin-right: 4px;
+      margin-right: 4px; white-space: nowrap;
     }
+
+    .btn-surrender {
+      padding: 10px 14px; border: 1px solid #4a2020; border-radius: 6px;
+      background: transparent; color: #ef4444; cursor: pointer;
+      font-size: 12px; font-weight: 600;
+      transition: background .15s; min-height: 44px; white-space: nowrap;
+    }
+    .btn-surrender:hover { background: rgba(239, 68, 68, 0.12); }
+
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.7);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 3000; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+    .modal {
+      background: #1a1a2e; border: 1px solid #2a2a45; border-radius: 12px;
+      padding: 24px; max-width: 340px; width: 90%;
+      box-shadow: 0 8px 32px rgba(0,0,0,.5);
+    }
+    .modal h2 { margin: 0 0 8px; font-size: 18px; color: #e8e8f0; }
+    .modal p { margin: 0 0 20px; font-size: 14px; color: #9090b0; line-height: 1.5; }
+    .modal-actions { display: flex; gap: 10px; }
+    .mbtn {
+      flex: 1; padding: 12px; border-radius: 8px; cursor: pointer;
+      font-size: 15px; font-weight: 600; border: none; min-height: 48px;
+    }
+    .mbtn.cancel { background: #2a2a45; color: #c0c0d0; }
+    .mbtn.cancel:hover { background: #3a3a55; }
+    .mbtn.confirm { background: #ef4444; color: #fff; }
+    .mbtn.confirm:hover { opacity: .85; }
 
     .game-over {
       position: fixed; inset: 0;
@@ -185,49 +217,34 @@ import { GameScene } from './scenes/game-scene';
       align-items: center; justify-content: center;
       background: rgba(0,0,0,.75);
       z-index: 2000;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     }
-    .game-over h2 { font-size: 36px; margin: 0 0 12px; color: #e8e8f0; }
+    .game-over h2 { font-size: 32px; margin: 0 0 12px; color: #e8e8f0; }
     .game-over p { margin: 0 0 8px; font-size: 18px; }
     .winner { color: #5ce75c; font-weight: 700; }
     .loser { color: #ff4444; font-weight: 700; }
     .winners-list { color: #9090b0; font-size: 14px !important; }
-    .btn-surrender {
-      padding: 4px 12px; border: 1px solid #4a2020; border-radius: 4px;
-      background: transparent; color: #ef4444; cursor: pointer;
-      font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
-      transition: background .15s;
-    }
-    .btn-surrender:hover { background: rgba(239, 68, 68, 0.12); }
-
-    .modal-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,.7);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 3000;
-    }
-    .modal {
-      background: #1a1a2e; border: 1px solid #2a2a45; border-radius: 10px;
-      padding: 24px; max-width: 340px; width: 90%;
-      box-shadow: 0 8px 32px rgba(0,0,0,.5);
-    }
-    .modal h2 { margin: 0 0 8px; font-size: 18px; color: #e8e8f0; }
-    .modal p { margin: 0 0 20px; font-size: 13px; color: #9090b0; line-height: 1.5; }
-    .modal-actions { display: flex; gap: 10px; }
-    .mbtn {
-      flex: 1; padding: 10px; border-radius: 6px; cursor: pointer;
-      font-size: 14px; font-weight: 600; border: none; min-height: 44px;
-    }
-    .mbtn.cancel { background: #2a2a45; color: #c0c0d0; }
-    .mbtn.cancel:hover { background: #3a3a55; }
-    .mbtn.confirm { background: #ef4444; color: #fff; }
-    .mbtn.confirm:hover { opacity: .85; }
-
     .btn-leave {
-      margin-top: 16px; padding: 8px 24px;
-      border: 1px solid #e74c3c; border-radius: 6px;
+      margin-top: 16px; padding: 12px 32px;
+      border: 1px solid #e74c3c; border-radius: 8px;
       background: transparent; color: #e74c3c;
-      cursor: pointer; font-size: 14px;
+      cursor: pointer; font-size: 15px; min-height: 48px;
     }
     .btn-leave:hover { background: #2a1515; }
+
+    @media (max-width: 480px) {
+      .top-bar { padding: 6px 10px; min-height: 44px; gap: 4px; }
+      .game-timer { font-size: 13px; }
+      .game-tick { display: none; }
+      .player-label { font-size: 12px; }
+      .peace-badge { font-size: 10px; padding: 2px 5px; }
+      .cmd-bar { padding: 6px 10px; min-height: 48px; }
+      .cbtn { min-width: 48px; padding: 8px 10px 6px; font-size: 12px; }
+      .sel-count { font-size: 16px; min-width: 20px; }
+      .sel-type { font-size: 11px; }
+      .target-hint { font-size: 11px; }
+      .btn-surrender { padding: 8px 10px; font-size: 11px; }
+    }
   `]
 })
 export class GameComponent implements AfterViewInit, OnDestroy {
