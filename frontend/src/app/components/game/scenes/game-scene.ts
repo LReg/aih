@@ -47,6 +47,8 @@ export class GameScene extends Phaser.Scene {
     this.attackEyeGraphics = this.add.graphics().setDepth(4);
     this.selectionRectGraphics = this.add.graphics().setDepth(3);
 
+    this.input.addPointer(2);
+
     this.drawGrid();
     this.setupCamera();
     this.setupInput();
@@ -252,7 +254,10 @@ export class GameScene extends Phaser.Scene {
     };
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (this.isMobile && pointer.button === 0 && this.input.pointer1?.isDown && this.input.pointer2?.isDown) {
+      if (pointer.button === 0 && this.input.pointer1?.isDown && this.input.pointer2?.isDown) {
+        clearLongPress();
+        this.leftDown = null;
+        this.pendingButton = null;
         const p1 = this.input.pointer1;
         const p2 = this.input.pointer2;
         if (p1 && p2) {
