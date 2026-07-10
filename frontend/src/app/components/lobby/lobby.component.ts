@@ -91,9 +91,9 @@ import { environment } from '../../../environments/environment';
               @if (isHost) {
                 <select [value]="lobby?.settings?.tickRateMs"
                   (change)="updateSetting('tickRateMs', +$any($event.target).value)">
-                  <option value="250">250ms &mdash; Fast</option>
-                  <option value="500">500ms &mdash; Normal</option>
+                  <option value="500">500ms &mdash; Fast</option>
                   <option value="1500">1500ms &mdash; Slow</option>
+                  <option value="2000">2000ms &mdash; Very Slow</option>
                 </select>
               } @else {
                 <span class="setting-val">{{ lobby?.settings?.tickRateMs }}ms</span>
