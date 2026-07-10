@@ -8,6 +8,8 @@ import type { GamemodeConfig } from './gamemode.config';
 import { processActions, queueGameAction } from './actions/actions';
 import { processGame } from './processing/processing';
 
+const CLEANUP_DELAY_MS = 300_000;
+
 @Injectable()
 export class GameService {
   private ticks = new Map<string, NodeJS.Timeout>();
@@ -118,9 +120,10 @@ export class GameService {
       this.stopTick(game.id);
       this.gameGateway.broadcastGameEnd(game);
       this.gameGateway.broadcastStateUpdate(game);
-      this.gameGateway.disconnectGameRoom(game.id);
-      this.gameDao.removeGame(game.id);
-      game.destroy();
+      setTimeout(() => {
+        this.gameDao.removeGame(game.id);
+        game.destroy();
+      }, CLEANUP_DELAY_MS);
       return;
     }
 
