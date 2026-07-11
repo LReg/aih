@@ -13,11 +13,13 @@ export function buildBarracksAction(game: Game, action: QueuedAction): void {
     if (!entity) { logger.warn(`build: entity=${entityId} not found`); continue; }
     if (entity.ownerId !== action.playerId) { logger.warn(`build: entity=${entityId} owner mismatch`); continue; }
     if (entity.type !== 'soldier') { logger.warn(`build: entity=${entityId} not soldier`); continue; }
+    if (entity.state.status === 'building-barracks') { continue; }
 
     const adj = game.map.findNearestEmptyTileAvoidBarracks(entity.x, entity.y);
     if (!adj) { logger.warn(`build: entity=${entityId} no valid tile (need 1-tile gap from barracks)`); continue; }
 
     entity.state = { status: 'building-barracks', startedAtTick: game.tick };
+    game.map.markChanged(entity.id);
     const barracks = createBarracks(action.playerId, adj.x, adj.y, game.tick);
     game.map.addEntity(barracks);
     logger.log(`build: entity=${entityId} barracks=${barracks.id} at (${adj.x},${adj.y})`);

@@ -1,27 +1,24 @@
 import { Logger } from '@nestjs/common';
-import { Game } from '../game';
 import { Entity } from '../game-map';
 
 const logger = new Logger('ResolveEntityCombat');
 
-export function resolveEntityCombat(game: Game, entity: Entity, target: Entity, barracksKillChance: number): boolean {
+export function resolveEntityCombat(
+  entity: Entity,
+  target: Entity,
+  barracksKillChance: number,
+): { killed: string } | null {
   if (target.type === 'soldier') {
     const attackerWins = Math.random() < 0.5;
-    if (attackerWins) {
-      game.map.removeEntity(target.id);
-      logger.log(`combat: entity=${entity.id} killed target=${target.id}`);
-    } else {
-      game.map.removeEntity(entity.id);
-      logger.log(`combat: entity=${entity.id} killed by target=${target.id}`);
-    }
-    return attackerWins;
+    const killedId = attackerWins ? target.id : entity.id;
+    logger.log(`combat: entity=${entity.id} ${attackerWins ? `killed target=${target.id}` : `killed by target=${target.id}`}`);
+    return { killed: killedId };
   }
 
   if (Math.random() < barracksKillChance) {
-    game.map.removeEntity(target.id);
     logger.log(`combat: entity=${entity.id} destroyed barracks=${target.id}`);
-    return true;
+    return { killed: target.id };
   }
   logger.log(`combat: entity=${entity.id} failed to destroy barracks=${target.id}`);
-  return true;
+  return null;
 }

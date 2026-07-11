@@ -127,7 +127,11 @@ export class GameService {
       return;
     }
 
-    this.gameGateway.broadcastStateUpdate(game);
+    if (game.tick === 1 || game.tick % 10 === 0) {
+      this.gameGateway.broadcastStateUpdate(game);
+    } else {
+      this.gameGateway.broadcastStateDiff(game);
+    }
   }
 
 }

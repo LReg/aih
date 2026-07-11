@@ -48,6 +48,15 @@ export interface GameState {
   createdAt: string;
 }
 
+export interface GameStateDiff {
+  tick: number;
+  diff: true;
+  changed: [string, Entity][];
+  removed: string[];
+}
+
+export type StateUpdate = GameState | GameStateDiff;
+
 export interface CountdownEvent {
   gamemode: string;
   seconds: number;

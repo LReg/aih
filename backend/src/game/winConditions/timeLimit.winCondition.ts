@@ -9,10 +9,8 @@ export function timeLimitWinCondition(game: Game): string[] {
   if (elapsed < config.maxDurationMs) return [];
 
   const counts = new Map<string, number>();
-  for (const entity of game.map.entities.values()) {
-    if (entity.type === 'soldier') {
-      counts.set(entity.ownerId, (counts.get(entity.ownerId) || 0) + 1);
-    }
+  for (const entity of game.map.soldiers.values()) {
+    counts.set(entity.ownerId, (counts.get(entity.ownerId) || 0) + 1);
   }
 
   if (counts.size === 0) return game.players;

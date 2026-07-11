@@ -5,7 +5,7 @@ import Phaser from 'phaser';
 import { GameApiService } from '../../service/game-api.service';
 import { SocketService } from '../../service/socket.service';
 import { AuthService } from '../../service/auth/auth.service';
-import { GameState, Entity } from '../../types/game.types';
+import { GameState, GameStateDiff, StateUpdate, Entity } from '../../types/game.types';
 import { BootScene } from './scenes/boot-scene';
 import { GameScene } from './scenes/game-scene';
 
@@ -137,8 +137,14 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   private listenToSocket() {
     this.socket.connectGame();
     this.socket.joinGameRoom(this.gameId);
-    this.subs.push(this.socket.stateUpdate$.subscribe(state => {
-      if (state.id === this.gameId) this.applyState(state);
+    this.subs.push(this.socket.stateUpdate$.subscribe((update: StateUpdate) => {
+      if ('diff' in update && update.diff) {
+        this.applyDiff(update as GameStateDiff);
+        return;
+      }
+      if ((update as GameState).id === this.gameId) {
+        this.applyState(update as GameState);
+      }
     }));
   }
 
@@ -173,6 +179,11 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     }
   }
 
+  private applyDiff(diff: GameStateDiff) {
+    this.gameTick = diff.tick;
+    this.gameScene.updateFromState(diff);
+  }
+
   private formatElapsed(startedAt: number): string {
     const totalMs = Math.max(0, Date.now() - startedAt);
     const totalSec = Math.floor(totalMs / 1000);
@@ -186,14 +197,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   }
 
   private syncSelection(ids: string[]) {
-    const state = this.gameScene.getGameState();
-    if (!state) { this.selectedEntities = []; return; }
-    this.selectedEntities = ids.map(id => {
-      for (const [eid, entity] of state.map.entities) {
-        if (eid === id) return entity;
-      }
-      return null;
-    }).filter(Boolean) as Entity[];
+    this.selectedEntities = ids.map(id => this.gameScene.getEntity(id)).filter(Boolean) as Entity[];
   }
 
   private submitAction(req: { action: string; entityIds: string[]; x: number; y: number }) {

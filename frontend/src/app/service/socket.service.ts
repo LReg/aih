@@ -2,7 +2,7 @@ import { Injectable, OnDestroy } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
 import { Observable, Subject } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { CountdownEvent, GameFoundEvent, GameState, LobbyData, LobbyStartedEvent } from '../types/game.types';
+import { CountdownEvent, GameFoundEvent, GameState, StateUpdate, LobbyData, LobbyStartedEvent } from '../types/game.types';
 
 @Injectable({ providedIn: 'root' })
 export class SocketService implements OnDestroy {
@@ -14,7 +14,7 @@ export class SocketService implements OnDestroy {
   private cancelledSubject = new Subject<string>();
   private requeuedSubject = new Subject<string>();
   private gameFoundSubject = new Subject<GameFoundEvent>();
-  private stateUpdateSubject = new Subject<GameState>();
+  private stateUpdateSubject = new Subject<StateUpdate>();
   private lobbyUpdateSubject = new Subject<LobbyData>();
   private lobbyStartedSubject = new Subject<LobbyStartedEvent>();
   private lobbyCancelledSubject = new Subject<{ lobbyId: string }>();
@@ -23,7 +23,7 @@ export class SocketService implements OnDestroy {
   countdownCancelled$: Observable<string> = this.cancelledSubject.asObservable();
   requeued$: Observable<string> = this.requeuedSubject.asObservable();
   gameFound$: Observable<GameFoundEvent> = this.gameFoundSubject.asObservable();
-  stateUpdate$: Observable<GameState> = this.stateUpdateSubject.asObservable();
+  stateUpdate$: Observable<StateUpdate> = this.stateUpdateSubject.asObservable();
   lobbyUpdate$: Observable<LobbyData> = this.lobbyUpdateSubject.asObservable();
   lobbyStarted$: Observable<LobbyStartedEvent> = this.lobbyStartedSubject.asObservable();
   lobbyCancelled$: Observable<{ lobbyId: string }> = this.lobbyCancelledSubject.asObservable();

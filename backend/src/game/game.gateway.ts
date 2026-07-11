@@ -7,6 +7,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Game } from './game';
+import { GameDao } from '../dao/game-dao';
 
 @WebSocketGateway({ namespace: 'game', cors: { origin: '*' } })
 export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -14,6 +15,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   server!: Server;
 
   private socketUserMap = new Map<string, string>();
+
+  constructor(private gameDao: GameDao) {}
 
   handleConnection(client: Socket) {
     const userId = client.handshake.auth?.userId as string | undefined;
@@ -27,6 +30,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('joinGame')
   handleJoinGame(client: Socket, gameId: string) {
     client.join(gameId);
+    const game = this.gameDao.getGame(gameId);
+    if (game) {
+      client.emit('stateUpdate', game.toJSON());
+    }
   }
 
   @SubscribeMessage('leaveGame')
@@ -51,6 +58,11 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   broadcastStateUpdate(game: Game) {
     this.server.to(game.id).emit('stateUpdate', game.toJSON());
+  }
+
+  broadcastStateDiff(game: Game) {
+    const diff = game.toDiffJSON();
+    this.server.to(game.id).emit('stateUpdate', diff);
   }
 
   disconnectGameRoom(gameId: string) {

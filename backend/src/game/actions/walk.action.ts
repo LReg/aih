@@ -26,6 +26,7 @@ export function walkAction(game: Game, action: QueuedAction): void {
     if (e.state.status === 'building-barracks') { continue; }
     const t = targets[i] || { x: payload.x, y: payload.y };
     e.state = { status: 'moving', targetX: t.x, targetY: t.y };
+    game.map.markChanged(e.id);
     e.lastCommand = 'move';
     logger.log(`walk: entity=${e.id} target=(${t.x},${t.y})`);
   }

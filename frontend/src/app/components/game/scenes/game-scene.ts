@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Subject } from 'rxjs';
-import { GameState, TileType } from '../../../types/game.types';
+import { GameState, GameStateDiff, StateUpdate, TileType, Entity } from '../../../types/game.types';
 import { TILE_SIZE } from './texture-generator';
 import { EntityManager } from './entity-manager';
 import { OverlayRenderer } from './overlay-renderer';
@@ -23,6 +23,9 @@ export class GameScene extends Phaser.Scene {
   playerId = '';
   targetingAction: 'walk' | 'attack' | null = null;
 
+  private entitiesMap = new Map<string, Entity>();
+  private entitySpatialMap = new Map<string, string>();
+
   constructor() {
     super({ key: 'GameScene' });
   }
@@ -34,14 +37,6 @@ export class GameScene extends Phaser.Scene {
     this.entityManager = new EntityManager(this);
     this.inputHandler = new InputHandler(this, this.apiHandle);
     this.inputHandler.setup();
-  }
-
-  override update() {
-    if (!this.gameState) return;
-    this.overlays.updatePositions(id => {
-      const s = this.entityManager.getSprite(id);
-      return s ? { x: s.x, y: s.y } : undefined;
-    });
   }
 
   setPlayerId(id: string) { this.playerId = id; }
@@ -64,6 +59,18 @@ export class GameScene extends Phaser.Scene {
   get isTargeting(): boolean { return this.targetingAction !== null; }
   getGameState(): GameState | null { return this.gameState; }
 
+  getEntity(id: string): Entity | undefined {
+    return this.entitiesMap.get(id);
+  }
+
+  override update() {
+    this.overlays.updatePositions((id) => {
+      const sprite = this.entityManager.getSprite(id);
+      if (!sprite) return undefined;
+      return { x: sprite.x, y: sprite.y };
+    });
+  }
+
   get apiHandle(): GameSceneAPI {
     return {
       gameState: () => this.gameState,
@@ -81,7 +88,23 @@ export class GameScene extends Phaser.Scene {
     };
   }
 
-  updateFromState(state: GameState) {
+  updateFromState(update: StateUpdate) {
+    if ('diff' in update && update.diff) {
+      this.applyDiff(update);
+    } else {
+      this.applyFull(update as GameState);
+    }
+
+    if (this.gameState) {
+      this.entityManager.reconcile(this.gameState, this.gameState.tickRateMs);
+      this.cleanSelection();
+      this.overlays.updateAll(this.gameState, this.selectedIds, this.playerId);
+    }
+
+    if (!this.hasCentered && this.gameState) this.centerOnPlayer();
+  }
+
+  private applyFull(state: GameState) {
     this.gameState = state;
     const w = state.map.width * TILE_SIZE;
     const h = state.map.height * TILE_SIZE;
@@ -94,22 +117,46 @@ export class GameScene extends Phaser.Scene {
       this.gridDrawn = true;
     }
 
-    this.entityManager.reconcile(state, state.tickRateMs);
-    this.cleanSelection(state);
-    this.overlays.updateAll(state, this.selectedIds, this.playerId);
-
-    if (!this.hasCentered) this.centerOnPlayer(state);
+    this.entitiesMap = new Map(state.map.entities);
+    this.buildSpatialMap();
   }
 
-  entityAt(tileX: number, tileY: number) {
-    if (!this.gameState) return null;
-    for (const [, entity] of this.gameState.map.entities) {
-      if (entity.x === tileX && entity.y === tileY) return entity;
+  private applyDiff(diff: GameStateDiff) {
+    if (!this.gameState) return;
+
+    this.gameState.tick = diff.tick;
+
+    for (const id of diff.removed) {
+      const e = this.entitiesMap.get(id);
+      if (e) this.entitySpatialMap.delete(`${e.x},${e.y}`);
+      this.entitiesMap.delete(id);
     }
-    return null;
+
+    for (const [id, entity] of diff.changed) {
+      const prev = this.entitiesMap.get(id);
+      if (prev) this.entitySpatialMap.delete(`${prev.x},${prev.y}`);
+      this.entitiesMap.set(id, entity);
+      this.entitySpatialMap.set(`${entity.x},${entity.y}`, id);
+    }
+
+    this.gameState.map.entities = [...this.entitiesMap.entries()];
   }
 
-  private centerOnPlayer(state: GameState) {
+  private buildSpatialMap() {
+    this.entitySpatialMap.clear();
+    for (const [id, entity] of this.entitiesMap) {
+      this.entitySpatialMap.set(`${entity.x},${entity.y}`, id);
+    }
+  }
+
+  entityAt(tileX: number, tileY: number): Entity | null {
+    const id = this.entitySpatialMap.get(`${tileX},${tileY}`);
+    if (!id) return null;
+    return this.entitiesMap.get(id) || null;
+  }
+
+  private centerOnPlayer() {
+    const state = this.gameState!;
     if (!this.playerId) return;
     for (const [, entity] of state.map.entities) {
       if (entity.ownerId === this.playerId && entity.type === 'soldier') {
@@ -122,12 +169,12 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private cleanSelection(state: GameState) {
-    const validIds = new Set(state.map.entities.map(([id]) => id));
+  private cleanSelection() {
+    if (!this.gameState) return;
     for (const id of this.selectedIds) {
-      if (!validIds.has(id)) this.selectedIds.delete(id);
+      if (!this.entitiesMap.has(id)) this.selectedIds.delete(id);
     }
-    if (state.state === 'finished') {
+    if (this.gameState.state === 'finished') {
       this.selectedIds.clear();
       this.cancelTargeting();
     }

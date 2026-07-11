@@ -31,6 +31,7 @@ export function attackAction(game: Game, action: QueuedAction): void {
     if (entity.state.status === 'building-barracks') { continue; }
     const t = targets[i] || { x: payload.x, y: payload.y };
     entity.state = { status: 'attacking', targetX: t.x, targetY: t.y };
+    game.map.markChanged(entity.id);
     entity.lastCommand = 'attack';
     logger.log(`attack: entity=${entity.id} target=(${t.x},${t.y})`);
   }

@@ -61,11 +61,49 @@ export class GameMap {
   height: number;
   tiles: Map<string, Tile> = new Map();
   entities: Map<string, Entity> = new Map();
+  soldiers: Map<string, Entity> = new Map();
+  barracks: Map<string, Entity> = new Map();
+  grid: Map<string, Set<string>> = new Map();
+  cellSize: number = 6;
+  dirtyEntityIds: Set<string> = new Set();
+  removedEntityIds: Set<string> = new Set();
 
   constructor(width: number, height: number) {
     this.width = width;
     this.height = height;
     this.fillGrass();
+  }
+
+  private cellKey(x: number, y: number): string {
+    return `${Math.floor(x / this.cellSize)},${Math.floor(y / this.cellSize)}`;
+  }
+
+  markChanged(id: string) {
+    this.dirtyEntityIds.add(id);
+  }
+
+  clearDiffs() {
+    this.dirtyEntityIds.clear();
+    this.removedEntityIds.clear();
+  }
+
+  private addToGrid(entity: Entity) {
+    const key = this.cellKey(entity.x, entity.y);
+    let cell = this.grid.get(key);
+    if (!cell) {
+      cell = new Set();
+      this.grid.set(key, cell);
+    }
+    cell.add(entity.id);
+  }
+
+  private removeFromGrid(entity: Entity) {
+    const key = this.cellKey(entity.x, entity.y);
+    const cell = this.grid.get(key);
+    if (cell) {
+      cell.delete(entity.id);
+      if (cell.size === 0) this.grid.delete(key);
+    }
   }
 
   private fillGrass() {
@@ -97,6 +135,13 @@ export class GameMap {
 
   addEntity(entity: Entity) {
     this.entities.set(entity.id, entity);
+    if (entity.type === 'soldier') {
+      this.soldiers.set(entity.id, entity);
+    } else {
+      this.barracks.set(entity.id, entity);
+    }
+    this.addToGrid(entity);
+    this.markChanged(entity.id);
     const tile = this.getTile(entity.x, entity.y);
     if (tile) tile.entityId = entity.id;
   }
@@ -104,8 +149,16 @@ export class GameMap {
   removeEntity(id: string) {
     const entity = this.entities.get(id);
     if (entity) {
+      this.removeFromGrid(entity);
+      if (entity.type === 'soldier') {
+        this.soldiers.delete(id);
+      } else {
+        this.barracks.delete(id);
+      }
       const tile = this.getTile(entity.x, entity.y);
       if (tile) tile.entityId = undefined;
+      this.dirtyEntityIds.delete(id);
+      this.removedEntityIds.add(id);
     }
     this.entities.delete(id);
   }
@@ -122,8 +175,7 @@ export class GameMap {
   }
 
   isNearBarracks(x: number, y: number): boolean {
-    for (const entity of this.entities.values()) {
-      if (entity.type !== 'barracks') continue;
+    for (const entity of this.barracks.values()) {
       if (Math.abs(entity.x - x) <= 1 && Math.abs(entity.y - y) <= 1) return true;
     }
     return false;
@@ -152,13 +204,19 @@ export class GameMap {
     const entity = this.entities.get(id);
     if (!entity) return;
 
+    this.removeFromGrid(entity);
+
     const oldTile = this.getTile(entity.x, entity.y);
     if (oldTile) oldTile.entityId = undefined;
 
     entity.x = nx;
     entity.y = ny;
 
+    this.addToGrid(entity);
+
     const newTile = this.getTile(nx, ny);
     if (newTile) newTile.entityId = entity.id;
+
+    this.markChanged(id);
   }
 }

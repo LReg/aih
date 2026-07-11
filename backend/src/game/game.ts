@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { GameMap, TileType } from './game-map';
+import { GameMap, TileType, Entity } from './game-map';
 import { Gamemode } from './gamemode.config';
 
 export type GameState = 'waiting' | 'countdown' | 'running' | 'finished';
@@ -45,6 +45,9 @@ export class Game {
   destroy() {
     this.actionQueue.length = 0;
     this.map.entities.clear();
+    this.map.soldiers.clear();
+    this.map.barracks.clear();
+    this.map.grid.clear();
     this.map.tiles.clear();
     this.players.length = 0;
     this.winners.length = 0;
@@ -71,6 +74,22 @@ export class Game {
       winners: this.winners,
       losers: this.losers,
       createdAt: this.createdAt,
+    };
+  }
+
+  toDiffJSON() {
+    const changed: [string, Entity][] = [];
+    for (const id of this.map.dirtyEntityIds) {
+      const e = this.map.entities.get(id);
+      if (e) changed.push([id, e]);
+    }
+    const removed = [...this.map.removedEntityIds];
+    this.map.clearDiffs();
+    return {
+      tick: this.tick,
+      diff: true as const,
+      changed,
+      removed,
     };
   }
 }

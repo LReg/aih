@@ -18,6 +18,22 @@ export function queueGameAction(
     return { accepted: false };
   }
 
+  const incoming = (body.payload as { entityIds?: string[] })?.entityIds;
+  if (incoming && incoming.length > 0) {
+    const incomingSet = new Set(incoming);
+    for (const queued of game.actionQueue) {
+      if (queued.playerId !== playerId) continue;
+      const queuedIds = (queued.payload as { entityIds?: string[] })?.entityIds;
+      if (!queuedIds) continue;
+      for (const id of queuedIds) {
+        if (incomingSet.has(id)) {
+          logger.warn(`queue rejected: entity=${id} already has queued action game=${game.id} player=${playerId}`);
+          return { accepted: false };
+        }
+      }
+    }
+  }
+
   const action: QueuedAction = {
     id: randomUUID(),
     playerId,
