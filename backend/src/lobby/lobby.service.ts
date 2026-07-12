@@ -84,6 +84,9 @@ export class LobbyService {
     baseConfig.mapHeight = lobby.settings.mapHeight;
     baseConfig.tickRateMs = lobby.settings.tickRateMs;
     baseConfig.peaceDurationMs = lobby.settings.peaceDurationMs;
+    baseConfig.startingSoldiers = lobby.settings.startingSoldiers;
+    baseConfig.maxBarracks = lobby.settings.maxBarracks;
+    baseConfig.darknessRange = lobby.settings.darknessRange;
 
     const gameId = this.gameService.launchGame(lobby.players, lobby.settings.gamemode, baseConfig);
     this.lobbyGateway.broadcastLobbyStarted(lobby, gameId);

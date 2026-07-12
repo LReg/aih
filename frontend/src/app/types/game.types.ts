@@ -34,6 +34,8 @@ export interface GameState {
   startedAt: number;
   peaceUntil: number;
   tickRateMs: number;
+  maxBarracks: number;
+  darknessRange: number;
   map: {
     width: number;
     height: number;
@@ -81,6 +83,9 @@ export interface LobbySettings {
   mapHeight: number;
   tickRateMs: number;
   peaceDurationMs: number;
+  startingSoldiers: number;
+  maxBarracks: number;
+  darknessRange: number;
 }
 
 export interface LobbyData {

@@ -36,6 +36,9 @@ export interface GamemodeConfig {
   soldierDetectRange: number;
   soldierAttackBarracksKillChance: number;
   peaceDurationMs: number;
+  startingSoldiers: number;
+  maxBarracks: number;
+  darknessRange: number;
   winCondition: WinCondition;
 }
 
@@ -53,13 +56,16 @@ export const GAMEMODE_CONFIGS: Record<string, GamemodeConfig> = {
     maxDurationMs: 3600000,
     mapWidth: 150,
     mapHeight: 150,
-    barracksBuildTime: 30,
-    soldierProductionTime: 60,
+    barracksBuildTime: 45,
+    soldierProductionTime: 90,
     soldierMoveRange: 3,
     soldierAttackRange: 1,
     soldierDetectRange: 4,
-    soldierAttackBarracksKillChance: 0.25,
+    soldierAttackBarracksKillChance: 0.15,
     peaceDurationMs: 100000,
+    startingSoldiers: 5,
+    maxBarracks: 15,
+    darknessRange: 10,
     winCondition: DEFAULT_WIN_CONDITION,
   },
   [Gamemode.Massive]: {
@@ -70,13 +76,16 @@ export const GAMEMODE_CONFIGS: Record<string, GamemodeConfig> = {
     maxDurationMs: 3600000,
     mapWidth: 400,
     mapHeight: 400,
-    barracksBuildTime: 30,
-    soldierProductionTime: 60,
+    barracksBuildTime: 45,
+    soldierProductionTime: 90,
     soldierMoveRange: 3,
     soldierAttackRange: 1,
     soldierDetectRange: 4,
-    soldierAttackBarracksKillChance: 0.25,
+    soldierAttackBarracksKillChance: 0.15,
     peaceDurationMs: 500000,
+    startingSoldiers: 5,
+    maxBarracks: 15,
+    darknessRange: 10,
     winCondition: DEFAULT_WIN_CONDITION,
   },
   [Gamemode.Slow]: {
@@ -88,12 +97,15 @@ export const GAMEMODE_CONFIGS: Record<string, GamemodeConfig> = {
     mapWidth: 100,
     mapHeight: 100,
     barracksBuildTime: 60,
-    soldierProductionTime: 70,
+    soldierProductionTime: 100,
     soldierMoveRange: 3,
     soldierAttackRange: 1,
     soldierDetectRange: 4,
-    soldierAttackBarracksKillChance: 0.25,
+    soldierAttackBarracksKillChance: 0.15,
     peaceDurationMs: 700000,
+    startingSoldiers: 5,
+    maxBarracks: 15,
+    darknessRange: 10,
     winCondition: DEFAULT_WIN_CONDITION,
   },
   [Gamemode.Test]: {
@@ -104,13 +116,16 @@ export const GAMEMODE_CONFIGS: Record<string, GamemodeConfig> = {
     maxDurationMs: 3600000,
     mapWidth: 100,
     mapHeight: 100,
-    barracksBuildTime: 10,
-    soldierProductionTime: 20,
+    barracksBuildTime: 15,
+    soldierProductionTime: 25,
     soldierMoveRange: 3,
     soldierAttackRange: 1,
     soldierDetectRange: 4,
-    soldierAttackBarracksKillChance: 0.25,
+    soldierAttackBarracksKillChance: 0.15,
     peaceDurationMs: 10000,
+    startingSoldiers: 5,
+    maxBarracks: 15,
+    darknessRange: 10,
     winCondition: DEFAULT_WIN_CONDITION,
   },
 };

@@ -22,7 +22,8 @@ export class GameService {
 
   launchGame(players: string[], gamemode: Gamemode, config: GamemodeConfig): string {
     const game = new Game(gamemode, new GameMap(config.mapWidth, config.mapHeight), players);
-    this.spawnPlayers(game, players);
+    game.config = config;
+    this.spawnPlayers(game, config.startingSoldiers);
     game.state = 'running';
     game.tick = 0;
     game.startedAt = Date.now();
@@ -35,14 +36,33 @@ export class GameService {
     return game.id;
   }
 
-  private spawnPlayers(game: Game, players: string[]) {
-    const positions = this.generateSpawnPositions(game.map, players.length);
-    for (let i = 0; i < players.length; i++) {
-      const pos = positions[i];
-      const soldier = createSoldier(players[i], pos.x, pos.y);
-      game.map.addEntity(soldier);
-      this.logger.log(`spawned player=${players[i]} at (${pos.x},${pos.y})`);
+  private spawnPlayers(game: Game, countPerPlayer: number) {
+    const playerPositions = this.generateSpawnPositions(game.map, game.players.length);
+    for (let i = 0; i < game.players.length; i++) {
+      const center = playerPositions[i];
+      const spawned = this.spawnCluster(game, game.players[i], center.x, center.y, countPerPlayer);
+      this.logger.log(`spawned ${spawned} soldiers for player=${game.players[i]} at (${center.x},${center.y})`);
     }
+  }
+
+  private spawnCluster(game: Game, ownerId: string, cx: number, cy: number, count: number): number {
+    let placed = 0;
+    for (let r = 0; r <= 3 && placed < count; r++) {
+      for (let dx = -r; dx <= r; dx++) {
+        for (let dy = -r; dy <= r; dy++) {
+          if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+          if (placed >= count) return placed;
+          const x = cx + dx;
+          const y = cy + dy;
+          if (game.map.isInBounds(x, y) && game.map.isTileEmpty(x, y)) {
+            const soldier = createSoldier(ownerId, x, y);
+            game.map.addEntity(soldier);
+            placed++;
+          }
+        }
+      }
+    }
+    return placed;
   }
 
   private generateSpawnPositions(map: GameMap, count: number): { x: number; y: number }[] {

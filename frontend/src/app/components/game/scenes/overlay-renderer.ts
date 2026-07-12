@@ -15,6 +15,7 @@ export class OverlayRenderer {
   private attackIds = new Set<string>();
   private selectedIds = new Set<string>();
   private playerId = '';
+  private visibleIds: Set<string> | null = null;
 
   constructor(private scene: Phaser.Scene) {}
 
@@ -34,14 +35,16 @@ export class OverlayRenderer {
     ).setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000).setVisible(false);
   }
 
-  updateAll(entitiesMap: Map<string, Entity> | null, selectedIds: Set<string>, playerId: string) {
+  updateAll(entitiesMap: Map<string, Entity> | null, selectedIds: Set<string>, playerId: string, visibleIds?: Set<string>) {
     this.selectedIds = selectedIds;
     this.playerId = playerId;
+    this.visibleIds = visibleIds || null;
     this.busyIds.clear();
     this.attackIds.clear();
     if (!entitiesMap) return;
 
     for (const [id, entity] of entitiesMap) {
+      if (this.visibleIds && !this.visibleIds.has(id)) continue;
       if (entity.type !== 'soldier') continue;
       if (entity.ownerId === playerId && entity.state.status === 'building-barracks') {
         this.busyIds.add(id);
@@ -50,25 +53,17 @@ export class OverlayRenderer {
         this.attackIds.add(id);
       }
     }
-
-    this.redraw(id => {
-      const entity = entitiesMap.get(id);
-      if (!entity) return undefined;
-      return { x: entity.x * TILE_SIZE + TILE_SIZE / 2, y: entity.y * TILE_SIZE + TILE_SIZE / 2 };
-    });
   }
 
-  updatePositions(getSpritePos: (id: string) => { x: number; y: number } | undefined) {
-    if (this.selectedIds.size === 0 && this.busyIds.size === 0 && this.attackIds.size === 0) return;
-    this.redraw(getSpritePos);
-  }
-
-  private redraw(getSpritePos: (id: string) => { x: number; y: number } | undefined) {
-    this.highlightGraphics.clear();
+  updatePositions(getSpritePos: (id: string) => { x: number; y: number } | undefined, visibleIds?: Set<string>) {
+    if (visibleIds) this.visibleIds = visibleIds;
     this.busyGraphics.clear();
     this.attackEyeGraphics.clear();
+    this.highlightGraphics.clear();
+    if (this.selectedIds.size === 0 && this.busyIds.size === 0 && this.attackIds.size === 0) return;
 
     for (const id of this.busyIds) {
+      if (this.visibleIds && !this.visibleIds.has(id)) continue;
       const pos = getSpritePos(id);
       if (!pos) continue;
       this.busyGraphics.fillStyle(0xff8800, 0.9);
@@ -76,6 +71,7 @@ export class OverlayRenderer {
     }
 
     for (const id of this.attackIds) {
+      if (this.visibleIds && !this.visibleIds.has(id)) continue;
       const pos = getSpritePos(id);
       if (!pos) continue;
       this.attackEyeGraphics.fillStyle(0xff0000, 1);
@@ -129,6 +125,11 @@ export class OverlayRenderer {
     this.selectionRectGraphics.fillRect(minX, minY, w, h);
     this.selectionRectGraphics.lineStyle(1, 0xffff00, 0.6);
     this.selectionRectGraphics.strokeRect(minX, minY, w, h);
+  }
+
+  clearSelection() {
+    this.selectedIds.clear();
+    this.selectionRectGraphics.clear();
   }
 
   clearSelectionRect() {

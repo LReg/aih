@@ -29,6 +29,8 @@ export function attackAction(game: Game, action: QueuedAction): void {
   for (let i = 0; i < entities.length; i++) {
     const entity = entities[i];
     if (entity.state.status === 'building-barracks') { continue; }
+    entity.lockedTargetId = undefined;
+    entity.path = undefined;
     const t = targets[i] || { x: payload.x, y: payload.y };
     entity.state = { status: 'attacking', targetX: t.x, targetY: t.y };
     game.map.markChanged(entity.id);

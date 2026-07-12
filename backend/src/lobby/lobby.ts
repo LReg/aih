@@ -8,6 +8,9 @@ export interface LobbySettings {
   mapHeight: number;
   tickRateMs: number;
   peaceDurationMs: number;
+  startingSoldiers: number;
+  maxBarracks: number;
+  darknessRange: number;
 }
 
 export class Lobby {
@@ -27,6 +30,9 @@ export class Lobby {
       mapHeight: 100,
       tickRateMs: 500,
       peaceDurationMs: 100000,
+      startingSoldiers: 5,
+      maxBarracks: 15,
+      darknessRange: 10,
       ...settings,
     };
     this.createdAt = new Date();

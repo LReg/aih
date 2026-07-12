@@ -32,6 +32,7 @@ export interface Entity {
   lastCommand?: string;
   path?: { x: number; y: number }[];
   pathIndex?: number;
+  lockedTargetId?: string;
 }
 
 export function createSoldier(ownerId: string, x: number, y: number): Entity {

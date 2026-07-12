@@ -6,14 +6,27 @@ const logger = new Logger('BuildBarracksAction');
 
 interface BuildPayload { entityIds: string[] }
 
+function countPlayerBarracks(game: Game, playerId: string): number {
+  let count = 0;
+  for (const b of game.map.barracks.values()) {
+    if (b.ownerId === playerId) count++;
+  }
+  return count;
+}
+
 export function buildBarracksAction(game: Game, action: QueuedAction): void {
   const payload = action.payload as BuildPayload;
+  const max = game.config.maxBarracks;
   for (const entityId of payload.entityIds) {
     const entity = game.map.entities.get(entityId);
     if (!entity) { logger.warn(`build: entity=${entityId} not found`); continue; }
     if (entity.ownerId !== action.playerId) { logger.warn(`build: entity=${entityId} owner mismatch`); continue; }
     if (entity.type !== 'soldier') { logger.warn(`build: entity=${entityId} not soldier`); continue; }
     if (entity.state.status === 'building-barracks') { continue; }
+    if (countPlayerBarracks(game, action.playerId) >= max) {
+      logger.warn(`build: player=${action.playerId} at max barracks (${max})`);
+      continue;
+    }
 
     const adj = game.map.findNearestEmptyTileAvoidBarracks(entity.x, entity.y);
     if (!adj) { logger.warn(`build: entity=${entityId} no valid tile (need 1-tile gap from barracks)`); continue; }

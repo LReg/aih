@@ -6,7 +6,7 @@ export class SpritePool {
 
   constructor(private scene: Phaser.Scene) {}
 
-  acquire(x: number, y: number, key: string, entityId: string): Phaser.GameObjects.Sprite {
+  acquire(x: number, y: number, key: string, entityId: string, tint: number): Phaser.GameObjects.Sprite {
     let sprite = this.available.pop();
     if (sprite) {
       sprite.setTexture(key);
@@ -15,10 +15,12 @@ export class SpritePool {
       sprite.setData('entityId', entityId);
       sprite.setVisible(true);
       sprite.setActive(true);
+      sprite.setTint(tint);
     } else {
       sprite = this.scene.add.sprite(x, y, key);
       sprite.setScale(SPRITE_SCALE);
       sprite.setData('entityId', entityId);
+      sprite.setTint(tint);
     }
     return sprite;
   }
@@ -26,6 +28,7 @@ export class SpritePool {
   release(sprite: Phaser.GameObjects.Sprite) {
     sprite.setVisible(false);
     sprite.setActive(false);
+    sprite.setTint(0xffffff);
     this.available.push(sprite);
   }
 

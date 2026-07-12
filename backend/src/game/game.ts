@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
-import { GameMap, TileType, Entity } from './game-map';
+import { GameMap, Entity } from './game-map';
 import { Gamemode } from './gamemode.config';
+import type { GamemodeConfig } from './gamemode.config';
 
 export type GameState = 'waiting' | 'countdown' | 'running' | 'finished';
 
@@ -25,6 +26,7 @@ export class Game {
   startedAt: number = 0;
   peaceUntil: number = 0;
   tickRateMs: number = 500;
+  config!: GamemodeConfig;
   actionQueue: QueuedAction[] = [];
   winners: string[] = [];
   losers: string[] = [];
@@ -54,6 +56,18 @@ export class Game {
     this.losers.length = 0;
   }
 
+  private serializeEntity(e: Entity): Record<string, unknown> {
+    return {
+      id: e.id,
+      ownerId: e.ownerId,
+      type: e.type,
+      x: e.x,
+      y: e.y,
+      state: e.state,
+      lastCommand: e.lastCommand,
+    };
+  }
+
   toJSON() {
     return {
       id: this.id,
@@ -65,9 +79,13 @@ export class Game {
       map: {
         width: this.map.width,
         height: this.map.height,
-        tiles: Array.from(this.map.tiles.entries()).filter(([, t]) => t.terrain !== TileType.Grass),
-        entities: Array.from(this.map.entities.entries()),
+        tiles: Array.from(this.map.tiles.entries()),
+        entities: Array.from(this.map.entities.entries()).map(
+          ([id, e]) => [id, this.serializeEntity(e)] as [string, Record<string, unknown>],
+        ),
       },
+      maxBarracks: this.config.maxBarracks,
+      darknessRange: this.config.darknessRange,
       players: this.players,
       playerColors: this.playerColors,
       state: this.state,
@@ -78,10 +96,10 @@ export class Game {
   }
 
   toDiffJSON() {
-    const changed: [string, Entity][] = [];
+    const changed: [string, Record<string, unknown>][] = [];
     for (const id of this.map.dirtyEntityIds) {
       const e = this.map.entities.get(id);
-      if (e) changed.push([id, e]);
+      if (e) changed.push([id, this.serializeEntity(e)]);
     }
     const removed = [...this.map.removedEntityIds];
     this.map.clearDiffs();

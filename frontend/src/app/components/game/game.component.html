@@ -1,14 +1,26 @@
 <div class="game-layout">
   <div class="top-bar">
     <div class="top-left">
+      <span class="player-label" [style.color]="playerColor">{{ playerName }}</span>
       <span class="game-timer">{{ elapsedTime }}</span>
-      @if (peaceRemaining > 0) {
-        <span class="peace-badge">Peace {{ peaceRemaining }}s</span>
-      }
     </div>
-    <span class="player-label" [style.color]="playerColor">{{ playerName }}</span>
+    <div class="top-center">
+      @if (peaceRemaining > 0) {
+        <div class="info-box peace-box">
+          <span class="info-icon">&#9762;</span>
+          <span class="info-val">{{ peaceRemaining }}s</span>
+        </div>
+      }
+      <div class="info-box">
+        <img src="/assets/barracks.png" class="asset-icon" />
+        <span class="info-val">{{ barracksCount }}/{{ maxBarracks }}</span>
+      </div>
+      <div class="info-box">
+        <span class="info-icon">&#9201;</span>
+        <span class="info-val">{{ gameTick }}</span>
+      </div>
+    </div>
     <div class="top-right">
-      <span class="game-tick">Tick {{ gameTick }}</span>
       @if (!gameFinished) {
         <button class="btn-surrender" (click)="showSurrenderModal = true">Give Up</button>
       }
@@ -43,24 +55,12 @@
 
   @if (selectedEntities.length > 0 || targetingMode) {
     <div class="cmd-bar">
-      <div class="cmd-left">
-        <span class="sel-count">{{ selectedEntities.length }}</span>
-        @if (selectedSoldiers > 0) {
-          <span class="sel-type">{{ selectedSoldiers }} <span class="dim">soldier</span></span>
-        }
-        @if (selectedBarracks > 0) {
-          <span class="sel-type">{{ selectedBarracks }} <span class="dim">barracks</span></span>
-        }
-        @if (hasBusy) {
-          <span class="sel-type busy">Occupied</span>
-        }
-      </div>
       <div class="cmd-buttons">
         @if (targetingMode) {
           <span class="target-hint">
             {{ targetingMode === 'walk' ? 'Select destination' : 'Select target' }}
           </span>
-          <button class="cbtn cancel" (click)="cancelTargeting()">&times; Cancel</button>
+          <button class="cbtn cancel" (click)="cancelTargeting()">&times;</button>
         } @else {
           <button class="cbtn" (click)="startWalk()">
             <span class="keyhint">Q</span>

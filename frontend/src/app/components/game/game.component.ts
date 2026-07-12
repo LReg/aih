@@ -31,6 +31,8 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   selectedEntities: Entity[] = [];
   targetingMode: 'walk' | 'attack' | null = null;
   gameFinished = false;
+  maxBarracks = 15;
+  barracksCount = 0;
   showSurrenderModal = false;
   winners: string[] = [];
   isWinner = false;
@@ -108,6 +110,10 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   private initPhaser() {
     this.phaser = new Phaser.Game({
       type: Phaser.AUTO,
+      autoRound: true,
+      roundPixels: false,
+      antialias: false,
+      batchSize: 4096,
       scale: { mode: Phaser.Scale.RESIZE, parent: this.container.nativeElement },
       backgroundColor: '#1a1a2e',
       scene: [BootScene, GameScene],
@@ -168,7 +174,9 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     this.elapsedTime = this.formatElapsed(state.startedAt);
     this.playerName = this.userId;
     this.playerColor = state.playerColors?.[this.userId] || '#ccc';
+    this.maxBarracks = state.maxBarracks;
     this.gameScene.updateFromState(state);
+    this.barracksCount = this.gameScene.countPlayerBarracks(this.userId);
 
     if (state.state === 'finished') {
       this.gameFinished = true;
@@ -182,6 +190,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   private applyDiff(diff: GameStateDiff) {
     this.gameTick = diff.tick;
     this.gameScene.updateFromState(diff);
+    this.barracksCount = this.gameScene.countPlayerBarracks(this.userId);
   }
 
   private formatElapsed(startedAt: number): string {
@@ -204,6 +213,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     this.api.submitAction(this.gameId, req.action, {
       entityIds: req.entityIds, x: req.x, y: req.y,
     }).subscribe();
+    this.gameScene.cancelSelection();
   }
 
   startWalk() {

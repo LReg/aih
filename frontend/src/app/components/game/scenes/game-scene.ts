@@ -16,6 +16,7 @@ export class GameScene extends Phaser.Scene {
   private entityManager!: EntityManager;
   private inputHandler!: InputHandler;
   private tileGraphics!: Phaser.GameObjects.Graphics;
+  private fogGraphics!: Phaser.GameObjects.Graphics;
   private hasCentered = false;
   private gridDrawn = false;
 
@@ -26,6 +27,8 @@ export class GameScene extends Phaser.Scene {
 
   private entitiesMap = new Map<string, Entity>();
   private entitySpatialMap = new Map<string, string>();
+  private darknessRange = 0;
+  private fogVisibleIds = new Set<string>();
 
   constructor() {
     super({ key: 'GameScene' });
@@ -33,6 +36,7 @@ export class GameScene extends Phaser.Scene {
 
   create() {
     this.tileGraphics = this.add.graphics().setDepth(0);
+    this.fogGraphics = this.add.graphics().setDepth(0);
     this.overlays.create();
 
     this.entityManager = new EntityManager(this);
@@ -64,13 +68,22 @@ export class GameScene extends Phaser.Scene {
     return this.entitiesMap.get(id);
   }
 
+  countPlayerBarracks(playerId: string): number {
+    let count = 0;
+    for (const entity of this.entitiesMap.values()) {
+      if (entity.ownerId === playerId && entity.type === 'barracks') count++;
+    }
+    return count;
+  }
+
   override update(time: number, delta: number) {
     this.entityManager.update(delta);
+    const visible = this.darknessRange > 0 ? this.fogVisibleIds : undefined;
     this.overlays.updatePositions((id) => {
       const sprite = this.entityManager.getSprite(id);
       if (!sprite) return undefined;
       return { x: sprite.x, y: sprite.y };
-    });
+    }, visible);
   }
 
   get apiHandle(): GameSceneAPI {
@@ -114,7 +127,12 @@ export class GameScene extends Phaser.Scene {
 
     if (this.gameState) {
       this.cleanSelection();
-      this.overlays.updateAll(this.entitiesMap, this.selectedIds, this.playerId);
+      if (this.darknessRange > 0) {
+        this.computeVisibility();
+        this.overlays.updateAll(this.entitiesMap, this.selectedIds, this.playerId, this.fogVisibleIds);
+      } else {
+        this.overlays.updateAll(this.entitiesMap, this.selectedIds, this.playerId);
+      }
     }
 
     if (!this.hasCentered && this.gameState) this.centerOnPlayer();
@@ -122,6 +140,7 @@ export class GameScene extends Phaser.Scene {
 
   private applyFull(state: GameState) {
     this.gameState = state;
+    this.darknessRange = state.darknessRange || 0;
     const w = state.map.width * TILE_SIZE;
     const h = state.map.height * TILE_SIZE;
     const cam = this.cameras.main;
@@ -224,6 +243,12 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  cancelSelection() {
+    this.selectedIds.clear();
+    this.overlays.clearSelection();
+    this.onSelectionChanged.next([]);
+  }
+
   private cleanSelection() {
     if (!this.gameState) return;
     for (const id of this.selectedIds) {
@@ -260,5 +285,81 @@ export class GameScene extends Phaser.Scene {
       this.tileGraphics.lineTo(width * TILE_SIZE, y * TILE_SIZE);
     }
     this.tileGraphics.strokePath();
+  }
+
+  private computeVisibility() {
+    if (!this.gameState) return;
+    const friends: { x: number; y: number }[] = [];
+    for (const e of this.entitiesMap.values()) {
+      if (e.ownerId === this.playerId) {
+        friends.push({ x: e.x, y: e.y });
+      }
+    }
+    if (this.darknessRange <= 0 || friends.length === 0) {
+      this.entityManager.showAll();
+      this.fogGraphics.clear();
+      this.fogVisibleIds.clear();
+      return;
+    }
+    const range = this.darknessRange;
+    const rangeSq = range * range;
+
+    // visible tiles
+    const visibleTiles = new Set<string>();
+    const { width, height, tiles } = this.gameState.map;
+    const tileMap = new Map(tiles);
+    for (const f of friends) {
+      const minX = Math.max(0, f.x - range);
+      const maxX = Math.min(width - 1, f.x + range);
+      const minY = Math.max(0, f.y - range);
+      const maxY = Math.min(height - 1, f.y + range);
+      for (let x = minX; x <= maxX; x++) {
+        for (let y = minY; y <= maxY; y++) {
+          const dx = x - f.x, dy = y - f.y;
+          if (dx * dx + dy * dy <= rangeSq) {
+            visibleTiles.add(`${x},${y}`);
+          }
+        }
+      }
+    }
+
+    // draw fog: gray for everything, terrain color for visible tiles
+    this.fogGraphics.clear();
+    this.fogGraphics.fillStyle(0x1a1a1a, 1);
+    this.fogGraphics.fillRect(0, 0, width * TILE_SIZE, height * TILE_SIZE);
+    for (const key of visibleTiles) {
+      const [x, y] = key.split(',').map(Number);
+      const tile = tileMap.get(key);
+      const color = !tile ? 0x3a5f0b
+        : tile.terrain === TileType.Water ? 0x1a5276
+        : tile.terrain === TileType.Mountain ? 0x5d4037
+        : 0x3a5f0b;
+      this.fogGraphics.fillStyle(color, 1);
+      this.fogGraphics.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    }
+    this.fogGraphics.lineStyle(1, 0x5a5a5a, 0.35);
+    for (let x = 0; x <= width; x++) {
+      this.fogGraphics.moveTo(x * TILE_SIZE, 0);
+      this.fogGraphics.lineTo(x * TILE_SIZE, height * TILE_SIZE);
+    }
+    for (let y = 0; y <= height; y++) {
+      this.fogGraphics.moveTo(0, y * TILE_SIZE);
+      this.fogGraphics.lineTo(width * TILE_SIZE, y * TILE_SIZE);
+    }
+    this.fogGraphics.strokePath();
+
+    // visible entities
+    this.fogVisibleIds.clear();
+    for (const e of this.entitiesMap.values()) {
+      if (e.ownerId === this.playerId) { this.fogVisibleIds.add(e.id); continue; }
+      for (const f of friends) {
+        const dx = e.x - f.x, dy = e.y - f.y;
+        if (dx * dx + dy * dy <= rangeSq) {
+          this.fogVisibleIds.add(e.id);
+          break;
+        }
+      }
+    }
+    this.entityManager.updateVisibility(this.fogVisibleIds);
   }
 }

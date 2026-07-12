@@ -113,6 +113,33 @@ import { environment } from '../../../environments/environment';
                 <span class="setting-val">{{ (lobby?.settings?.peaceDurationMs || 0) / 1000 }}s</span>
               }
             </div>
+            <div class="setting-field">
+              <label>Starting Soldiers</label>
+              @if (isHost) {
+                <input type="number" min="1" max="20" [value]="lobby?.settings?.startingSoldiers"
+                  (change)="updateSetting('startingSoldiers', +$any($event.target).value)" />
+              } @else {
+                <span class="setting-val">{{ lobby?.settings?.startingSoldiers }}</span>
+              }
+            </div>
+            <div class="setting-field">
+              <label>Max Barracks</label>
+              @if (isHost) {
+                <input type="number" min="1" max="50" [value]="lobby?.settings?.maxBarracks"
+                  (change)="updateSetting('maxBarracks', +$any($event.target).value)" />
+              } @else {
+                <span class="setting-val">{{ lobby?.settings?.maxBarracks }}</span>
+              }
+            </div>
+            <div class="setting-field">
+              <label>Darkness Range</label>
+              @if (isHost) {
+                <input type="number" min="0" max="50" [value]="lobby?.settings?.darknessRange"
+                  (change)="updateSetting('darknessRange', +$any($event.target).value)" />
+              } @else {
+                <span class="setting-val">{{ lobby?.settings?.darknessRange }}</span>
+              }
+            </div>
           </div>
         </section>
 

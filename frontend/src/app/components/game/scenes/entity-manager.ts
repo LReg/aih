@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Entity } from '../../../types/game.types';
-import { TILE_SIZE, makeEntityTexture, parseColor } from './texture-generator';
+import { TILE_SIZE, parseColor } from './texture-generator';
 import { SpritePool } from './sprite-pool';
 
 interface Movement {
@@ -10,10 +10,17 @@ interface Movement {
   duration: number;
 }
 
+const CULL_MARGIN = 64;
+
 export class EntityManager {
   private sprites = new Map<string, Phaser.GameObjects.Sprite>();
   private pool: SpritePool;
   private moving = new Map<string, Movement>();
+
+  private camLeft = 0;
+  private camTop = 0;
+  private camRight = 800;
+  private camBottom = 600;
 
   constructor(private scene: Phaser.Scene) {
     this.pool = new SpritePool(scene);
@@ -65,6 +72,12 @@ export class EntityManager {
   }
 
   update(dt: number) {
+    const cam = this.scene.cameras.main;
+    this.camLeft = cam.scrollX - CULL_MARGIN;
+    this.camTop = cam.scrollY - CULL_MARGIN;
+    this.camRight = cam.scrollX + cam.width / cam.zoom + CULL_MARGIN;
+    this.camBottom = cam.scrollY + cam.height / cam.zoom + CULL_MARGIN;
+
     for (const [id, m] of this.moving) {
       m.elapsed += dt;
       const t = Math.min(m.elapsed / m.duration, 1);
@@ -73,8 +86,18 @@ export class EntityManager {
         this.moving.delete(id);
         continue;
       }
-      sprite.x = m.fromX + (m.toX - m.fromX) * t;
-      sprite.y = m.fromY + (m.toY - m.fromY) * t;
+      const nx = m.fromX + (m.toX - m.fromX) * t;
+      const ny = m.fromY + (m.toY - m.fromY) * t;
+      if (nx < this.camLeft || nx > this.camRight || ny < this.camTop || ny > this.camBottom) {
+        if (t >= 1) {
+          sprite.x = nx;
+          sprite.y = ny;
+          this.moving.delete(id);
+        }
+        continue;
+      }
+      sprite.x = nx;
+      sprite.y = ny;
       if (t >= 1) this.moving.delete(id);
     }
   }
@@ -95,10 +118,23 @@ export class EntityManager {
   private create(entity: Entity, playerColors: Record<string, string>) {
     const x = entity.x * TILE_SIZE + TILE_SIZE / 2;
     const y = entity.y * TILE_SIZE + TILE_SIZE / 2;
-    const color = parseColor(playerColors[entity.ownerId]);
-    const key = makeEntityTexture(this.scene, color, entity.type);
-    const sprite = this.pool.acquire(x, y, key, entity.id);
+    const key = entity.type === 'soldier' ? 'soldiers' : 'barracks';
+    const c = parseColor(playerColors[entity.ownerId]);
+    const tint = (((c >> 16) + 255) >> 1) << 16 | (((c >> 8) & 0xff) + 255) >> 1 << 8 | ((c & 0xff) + 255) >> 1;
+    const sprite = this.pool.acquire(x, y, key, entity.id, tint);
     this.sprites.set(entity.id, sprite);
+  }
+
+  showAll() {
+    for (const sprite of this.sprites.values()) {
+      sprite.setVisible(true);
+    }
+  }
+
+  updateVisibility(visibleIds: Set<string>) {
+    for (const [id, sprite] of this.sprites) {
+      sprite.setVisible(visibleIds.has(id));
+    }
   }
 
   destroyAll() {
