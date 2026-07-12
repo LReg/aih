@@ -2,6 +2,7 @@ export enum TileType {
   Grass = 'grass',
   Water = 'water',
   Mountain = 'mountain',
+  Wall = 'wall',
 }
 
 export interface Tile {

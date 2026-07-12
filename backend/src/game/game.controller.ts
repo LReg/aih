@@ -23,6 +23,6 @@ export class GameController {
 
   @Get('game/:gameId')
   getGame(@Param('gameId') gameId: string) {
-    return this.gameService.getGame(gameId)?.toJSON();
+    return this.gameService.getGame(gameId);
   }
 }

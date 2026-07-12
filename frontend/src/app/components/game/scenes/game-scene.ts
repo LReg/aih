@@ -271,6 +271,7 @@ export class GameScene extends Phaser.Scene {
       const [x, y] = key.split(',').map(Number);
       const color = tile.terrain === TileType.Water ? 0x1a5276
         : tile.terrain === TileType.Mountain ? 0x5d4037
+        : tile.terrain === TileType.Wall ? 0x2d2d2d
         : 0x3a5f0b;
       this.tileGraphics.fillStyle(color, 1);
       this.tileGraphics.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
@@ -334,6 +335,7 @@ export class GameScene extends Phaser.Scene {
       const color = !tile ? 0x3a5f0b
         : tile.terrain === TileType.Water ? 0x1a5276
         : tile.terrain === TileType.Mountain ? 0x5d4037
+        : tile.terrain === TileType.Wall ? 0x2d2d2d
         : 0x3a5f0b;
       this.fogGraphics.fillStyle(color, 1);
       this.fogGraphics.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);

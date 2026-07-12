@@ -20,7 +20,7 @@ const COLORS = [
 ];
 
 export class Game {
-  readonly id: string = randomUUID();
+  readonly id: string;
   state: GameState = 'waiting';
   tick: number = 0;
   startedAt: number = 0;
@@ -37,7 +37,9 @@ export class Game {
     public readonly map: GameMap,
     public readonly players: string[],
     public readonly createdAt: Date = new Date(),
+    id?: string,
   ) {
+    this.id = id || randomUUID();
     this.playerColors = {};
     for (let i = 0; i < players.length; i++) {
       this.playerColors[players[i]] = COLORS[i % COLORS.length];

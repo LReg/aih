@@ -23,6 +23,7 @@ export enum TileType {
   Grass = 'grass',
   Water = 'water',
   Mountain = 'mountain',
+  Wall = 'wall',
 }
 
 export interface Tile {
@@ -65,6 +66,18 @@ export function createBarracks(ownerId: string, x: number, y: number, tick: numb
   };
 }
 
+function seedFromString(str: string): () => number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return () => {
+    hash = (hash * 1664525 + 1013904223) >>> 0;
+    return hash;
+  };
+}
+
 export class GameMap {
   width: number;
   height: number;
@@ -77,10 +90,11 @@ export class GameMap {
   dirtyEntityIds: Set<string> = new Set();
   removedEntityIds: Set<string> = new Set();
 
-  constructor(width: number, height: number) {
+  constructor(width: number, height: number, wallSeed?: string) {
     this.width = width;
     this.height = height;
     this.fillGrass();
+    this.generateWalls(wallSeed);
   }
 
   private cellKey(x: number, y: number): string {
@@ -123,6 +137,87 @@ export class GameMap {
     }
   }
 
+  private generateWalls(seed?: string) {
+    const rng = seedFromString(seed || `${this.width}x${this.height}-walls-${Date.now()}`);
+    const spawnZoneTop = Math.floor(this.height * 0.3);
+    const spawnZoneBot = Math.floor(this.height * 0.7);
+    const spawnZoneLeft = Math.floor(this.width * 0.15);
+    const spawnZoneRight = Math.floor(this.width * 0.85);
+
+    const formations = Math.floor(Math.sqrt(this.width * this.height) * 0.04);
+    for (let f = 0; f < formations; f++) {
+      const margin = 4;
+      const sx = margin + (rng() % (this.width - margin * 2));
+      const sy = margin + (rng() % (this.height - margin * 2));
+      if (sy >= spawnZoneTop && sy <= spawnZoneBot && sx >= spawnZoneLeft && sx <= spawnZoneRight) continue;
+
+      const len = 6 + (rng() % 8);
+      const shape = rng() % 4;
+
+      if (shape === 0) {
+        this.drawLine(sx, sy, 1, 0, len);
+      } else if (shape === 1) {
+        this.drawLine(sx, sy, 0, 1, len);
+      } else if (shape === 2) {
+        this.drawLine(sx, sy, 1, 0, len);
+        this.drawLine(sx + len - 1, sy + 1, 0, 1, 3 + (rng() % 3));
+      } else {
+        this.drawLine(sx, sy, 0, 1, len);
+        this.drawLine(sx + 1, sy + len - 1, 1, 0, 3 + (rng() % 3));
+      }
+    }
+
+    this.addCornerWalls(rng, spawnZoneTop, spawnZoneBot, spawnZoneLeft, spawnZoneRight);
+  }
+
+  private drawLine(x: number, y: number, dx: number, dy: number, len: number) {
+    for (let i = 0; i < len; i++) {
+      const nx = x + dx * i;
+      const ny = y + dy * i;
+      if (this.isInBounds(nx, ny)) this.setWall(nx, ny);
+    }
+  }
+
+  private addCornerWalls(
+    rng: () => number,
+    top: number,
+    bot: number,
+    left: number,
+    right: number,
+  ) {
+    const cornerLen = 5 + (rng() % 6);
+
+    const corners = [
+      { x: left, y: top, dx: 1, dy: 0 },
+      { x: right - cornerLen, y: top, dx: 1, dy: 0 },
+      { x: left, y: bot + 2, dx: 1, dy: 0 },
+      { x: right - cornerLen, y: bot + 2, dx: 1, dy: 0 },
+      { x: left, y: top, dx: 0, dy: 1 },
+      { x: left, y: bot - cornerLen, dx: 0, dy: 1 },
+      { x: right - 1, y: top, dx: 0, dy: 1 },
+      { x: right - 1, y: bot - cornerLen, dx: 0, dy: 1 },
+    ];
+
+    const numCorners = 3 + (rng() % 4);
+    const shuffled = [...corners];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = rng() % (i + 1);
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    for (let i = 0; i < numCorners; i++) {
+      const c = shuffled[i];
+      this.drawLine(c.x, c.y, c.dx, c.dy, cornerLen);
+    }
+  }
+
+  private setWall(x: number, y: number) {
+    const tile = this.getTile(x, y);
+    if (tile && tile.terrain === TileType.Grass) {
+      tile.terrain = TileType.Wall;
+    }
+  }
+
   getTile(x: number, y: number): Tile | null {
     return this.tiles.get(`${x},${y}`) || null;
   }
@@ -133,12 +228,14 @@ export class GameMap {
 
   isTileEmpty(x: number, y: number): boolean {
     const tile = this.getTile(x, y);
-    return tile !== null && !tile.entityId;
+    return tile !== null && !tile.entityId && tile.terrain !== TileType.Wall;
   }
 
   isTilePassableForMove(x: number, y: number, ownerId: string): boolean {
-    if (this.isTileEmpty(x, y)) return true;
-    const entity = this.getEntityAt(x, y);
+    const tile = this.getTile(x, y);
+    if (!tile || tile.terrain === TileType.Wall) return false;
+    if (!tile.entityId) return true;
+    const entity = this.entities.get(tile.entityId);
     return entity !== undefined && entity.ownerId !== ownerId;
   }
 

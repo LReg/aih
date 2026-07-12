@@ -6,7 +6,6 @@ import {
   SubscribeMessage,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Game } from './game';
 import { GameDao } from '../dao/game-dao';
 
 @WebSocketGateway({ namespace: 'game', cors: { origin: '*' } })
@@ -30,9 +29,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('joinGame')
   handleJoinGame(client: Socket, gameId: string) {
     client.join(gameId);
-    const game = this.gameDao.getGame(gameId);
-    if (game) {
-      client.emit('stateUpdate', game.toJSON());
+    const state = this.gameDao.getGame(gameId);
+    if (state) {
+      client.emit('stateUpdate', state);
     }
   }
 
@@ -41,28 +40,27 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.leave(gameId);
   }
 
-  broadcastGameStart(game: Game) {
+  broadcastGameStart(state: { gameId: string; players: string[]; gamemode: string }) {
     this.server.emit('gameFound', {
-      gameId: game.id,
-      players: game.players,
-      gamemode: game.gamemode,
+      gameId: state.gameId,
+      players: state.players,
+      gamemode: state.gamemode,
     });
   }
 
-  broadcastGameEnd(game: Game) {
-    this.server.to(game.id).emit('gameEnded', {
-      gameId: game.id,
-      winners: game.winners,
+  broadcastGameEnd(state: { gameId: string; winners: string[] }) {
+    this.server.to(state.gameId).emit('gameEnded', {
+      gameId: state.gameId,
+      winners: state.winners,
     });
   }
 
-  broadcastStateUpdate(game: Game) {
-    this.server.to(game.id).emit('stateUpdate', game.toJSON());
+  broadcastStateUpdate(state: any) {
+    this.server.to(state.id || state.gameId).emit('stateUpdate', state);
   }
 
-  broadcastStateDiff(game: Game) {
-    const diff = game.toDiffJSON();
-    this.server.to(game.id).emit('stateUpdate', diff);
+  broadcastStateDiff(gameId: string, diff: any) {
+    this.server.to(gameId).emit('stateUpdate', diff);
   }
 
   disconnectGameRoom(gameId: string) {

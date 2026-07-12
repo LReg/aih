@@ -1,16 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { Game } from '../game/game';
 
 @Injectable()
 export class GameDao {
-  private games = new Map<string, Game>();
+  private games = new Map<string, any>();
 
-  getGame(id: string): Game | undefined {
+  getGame(id: string): any {
     return this.games.get(id);
   }
 
-  saveGame(game: Game) {
-    this.games.set(game.id, game);
+  saveGame(game: any) {
+    this.games.set(game.id || game.gameId, game);
   }
 
   removeGame(id: string) {
