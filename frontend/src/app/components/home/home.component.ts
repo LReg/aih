@@ -26,23 +26,23 @@ import { environment } from '../../../environments/environment';
 
         <app-gamemode-select
           [state]="getQueueState('casual')" [config]="casualConfig"
-          label="Casual" gamemode="casual"
+          label="Casual" gamemode="casual" [queueCount]="queueCounts['casual'] || 0"
           (select)="joinQueue($event)"></app-gamemode-select>
 
         <app-gamemode-select
           [state]="getQueueState('massive')" [config]="massiveConfig"
-          label="Massive" gamemode="massive"
+          label="Massive" gamemode="massive" [queueCount]="queueCounts['massive'] || 0"
           (select)="joinQueue($event)"></app-gamemode-select>
 
         <app-gamemode-select
           [state]="getQueueState('slow')" [config]="slowConfig"
-          label="Slow" gamemode="slow"
+          label="Slow" gamemode="slow" [queueCount]="queueCounts['slow'] || 0"
           (select)="joinQueue($event)"></app-gamemode-select>
 
         @if (environment.baseUrl.includes('localhost')) {
           <app-gamemode-select
             [state]="getQueueState('test')" [config]="testConfig"
-            label="Test" gamemode="test"
+            label="Test" gamemode="test" [queueCount]="queueCounts['test'] || 0"
             (select)="joinQueue($event)"></app-gamemode-select>
         }
 
@@ -102,6 +102,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   countdownSeconds = 0;
   countdownPlayerCount = 0;
   countdownMaxPlayers = 0;
+  queueCounts: Record<string, number> = {};
   casualConfig: GamemodeConfig = { maxPlayers: 5, mapWidth: 150, mapHeight: 150, tickRateMs: 1000 };
   massiveConfig: GamemodeConfig = { maxPlayers: 10, mapWidth: 400, mapHeight: 400, tickRateMs: 1000 };
   slowConfig: GamemodeConfig = { maxPlayers: 5, mapWidth: 100, mapHeight: 100, tickRateMs: 1500 };
@@ -158,6 +159,9 @@ export class HomeComponent implements OnInit, OnDestroy {
       }),
       this.socket.gameFound$.subscribe(e => {
         this.router.navigate(['/game', e.gameId]);
+      }),
+      this.socket.queueUpdate$.subscribe(counts => {
+        this.queueCounts = counts;
       }),
     );
   }

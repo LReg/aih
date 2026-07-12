@@ -5,7 +5,7 @@ import Phaser from 'phaser';
 import { GameApiService } from '../../service/game-api.service';
 import { SocketService } from '../../service/socket.service';
 import { AuthService } from '../../service/auth/auth.service';
-import { GameState, GameStateDiff, StateUpdate, Entity } from '../../types/game.types';
+import { GameState, GameStateDiff, StateUpdate, Entity, isOverridable } from '../../types/game.types';
 import { BootScene } from './scenes/boot-scene';
 import { GameScene } from './scenes/game-scene';
 
@@ -56,7 +56,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
 
   get hasBusy(): boolean {
     return this.selectedEntities.some(
-      e => e.type === 'soldier' && e.state.status === 'building-barracks',
+      e => e.type === 'soldier' && !isOverridable(e.state.status),
     );
   }
 

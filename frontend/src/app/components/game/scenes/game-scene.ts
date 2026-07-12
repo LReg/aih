@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Subject } from 'rxjs';
-import { GameState, GameStateDiff, StateUpdate, TileType, Entity } from '../../../types/game.types';
+import { GameState, GameStateDiff, StateUpdate, TileType, Entity, isOverridable } from '../../../types/game.types';
 import { TILE_SIZE } from './texture-generator';
 import { EntityManager } from './entity-manager';
 import { OverlayRenderer } from './overlay-renderer';
@@ -77,6 +77,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   override update(time: number, delta: number) {
+    this.entityManager.setFogVisibleIds(this.darknessRange > 0 ? this.fogVisibleIds : null);
     this.entityManager.update(delta);
     const visible = this.darknessRange > 0 ? this.fogVisibleIds : undefined;
     this.overlays.updatePositions((id) => {
@@ -213,7 +214,7 @@ export class GameScene extends Phaser.Scene {
     if (!this.gameState) return [];
     const soldiers = [...this.selectedIds].filter(id => {
       const e = this.entitiesMap.get(id);
-      return e && e.type === 'soldier';
+      return e && e.type === 'soldier' && isOverridable(e.state.status);
     });
     const count = soldiers.length;
     if (count === 0) return [];

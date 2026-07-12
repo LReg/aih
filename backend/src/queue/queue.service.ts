@@ -27,6 +27,7 @@ export class QueueService {
     }
 
     this.queueDao.add(gamemode, userId);
+    this.matchmaking.broadcastQueueUpdate(this.getQueueCounts());
 
     if (!config.startMinPlayers) {
       this.logger.log(`no startMinPlayers for gamemode="${gamemode}"`);
@@ -50,11 +51,21 @@ export class QueueService {
       for (const pid of requeued) {
         this.queueDao.add(gamemode, pid);
       }
+      this.matchmaking.broadcastQueueUpdate(this.getQueueCounts());
       this.checkForNewMatch(gamemode);
       return;
     }
 
     this.queueDao.remove(gamemode, userId);
+    this.matchmaking.broadcastQueueUpdate(this.getQueueCounts());
+  }
+
+  getQueueCounts(): Record<string, number> {
+    const counts: Record<string, number> = {};
+    for (const gamemode of Object.values(Gamemode)) {
+      counts[gamemode] = this.queueDao.getQueue(gamemode).length;
+    }
+    return counts;
   }
 
   checkForNewMatch(gamemode: Gamemode) {
@@ -68,5 +79,6 @@ export class QueueService {
       this.logger.log(`creating new match from requeued players=[${players}]`);
       this.matchmaking.createMatch(gamemode, players);
     }
+    this.matchmaking.broadcastQueueUpdate(this.getQueueCounts());
   }
 }

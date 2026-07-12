@@ -53,9 +53,9 @@
     </div>
   }
 
-  @if (selectedEntities.length > 0 || targetingMode) {
-    <div class="cmd-bar">
-      <div class="cmd-buttons">
+  <div class="cmd-bar">
+    <div class="cmd-buttons">
+      @if (selectedEntities.length > 0 || targetingMode) {
         @if (targetingMode) {
           <span class="target-hint">
             {{ targetingMode === 'walk' ? 'Select destination' : 'Select target' }}
@@ -75,7 +75,7 @@
             Build
           </button>
         }
-      </div>
+      }
     </div>
-  }
+  </div>
 </div>

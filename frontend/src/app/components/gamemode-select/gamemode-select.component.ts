@@ -25,6 +25,9 @@ export interface GamemodeConfig {
         </span>
       </div>
       <p>{{ config.maxPlayers }} players, {{ config.mapWidth }}x{{ config.mapHeight }} map, {{ config.tickRateMs }}ms ticks</p>
+      @if (queueCount > 0 && state === 'idle') {
+        <p class="queue-info">{{ queueCount }} in queue</p>
+      }
     </div>
   `,
   styles: [`
@@ -53,6 +56,7 @@ export interface GamemodeConfig {
     }
     h3 { margin: 0; color: var(--text-primary); }
     p { margin: 0; color: var(--text-secondary); font-size: 14px; }
+    .queue-info { margin-top: 4px; font-size: 12px; color: var(--accent); }
     .badge {
       font-size: 12px;
       font-weight: 600;
@@ -68,6 +72,7 @@ export class GamemodeSelectComponent {
   @Input() config: GamemodeConfig = { maxPlayers: 5, mapWidth: 100, mapHeight: 100, tickRateMs: 500 };
   @Input() label = 'Casual';
   @Input() gamemode = 'casual';
+  @Input() queueCount = 0;
   @Output() select = new EventEmitter<string>();
 
   onClick() {

@@ -86,4 +86,8 @@ export class MatchmakingGateway implements OnGatewayConnection, OnGatewayDisconn
       this.server.to(sid).emit('requeued', { gamemode });
     }
   }
+
+  emitQueueUpdate(counts: Record<string, number>) {
+    this.server.emit('queueUpdate', { counts });
+  }
 }

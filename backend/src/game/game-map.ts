@@ -11,6 +11,14 @@ export type EntityState =
   | { status: 'building'; startedAtTick: number }
   | { status: 'ready'; lastProducedAtTick: number };
 
+export const STATUS_OVERRIDABLE: Record<string, boolean> = {
+  'building-barracks': false,
+};
+
+export function isOverridable(status: string): boolean {
+  return STATUS_OVERRIDABLE[status] !== false;
+}
+
 export enum TileType {
   Grass = 'grass',
   Water = 'water',

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { Entity, GameState } from '../../../types/game.types';
+import { Entity, GameState, isOverridable } from '../../../types/game.types';
 import { TILE_SIZE } from './texture-generator';
 
 export class OverlayRenderer {
@@ -46,7 +46,7 @@ export class OverlayRenderer {
     for (const [id, entity] of entitiesMap) {
       if (this.visibleIds && !this.visibleIds.has(id)) continue;
       if (entity.type !== 'soldier') continue;
-      if (entity.ownerId === playerId && entity.state.status === 'building-barracks') {
+      if (entity.ownerId === playerId && !isOverridable(entity.state.status)) {
         this.busyIds.add(id);
       }
       if (entity.state.status === 'attacking') {

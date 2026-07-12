@@ -119,6 +119,10 @@ export class MatchmakingService {
     }
   }
 
+  broadcastQueueUpdate(counts: Record<string, number>) {
+    this.gateway.emitQueueUpdate(counts);
+  }
+
   private launch(match: PendingMatch) {
     this.logger.log(`launch matchId="${match.id}" gamemode="${match.gamemode}" players=[${match.players}]`);
     const config = GAMEMODE_CONFIGS[match.gamemode];

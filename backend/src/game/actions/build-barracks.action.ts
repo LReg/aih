@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { Game, QueuedAction } from '../game';
-import { createBarracks } from '../game-map';
+import { createBarracks, isOverridable } from '../game-map';
 
 const logger = new Logger('BuildBarracksAction');
 
@@ -22,7 +22,7 @@ export function buildBarracksAction(game: Game, action: QueuedAction): void {
     if (!entity) { logger.warn(`build: entity=${entityId} not found`); continue; }
     if (entity.ownerId !== action.playerId) { logger.warn(`build: entity=${entityId} owner mismatch`); continue; }
     if (entity.type !== 'soldier') { logger.warn(`build: entity=${entityId} not soldier`); continue; }
-    if (entity.state.status === 'building-barracks') { continue; }
+    if (!isOverridable(entity.state.status)) { continue; }
     if (countPlayerBarracks(game, action.playerId) >= max) {
       logger.warn(`build: player=${action.playerId} at max barracks (${max})`);
       continue;

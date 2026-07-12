@@ -14,9 +14,25 @@ export class EntityManager {
   private sprites = new Map<string, Phaser.GameObjects.Sprite>();
   private pool: SpritePool;
   private moving = new Map<string, Movement>();
+  private fogVisibleIds: Set<string> | null = null;
 
   constructor(private scene: Phaser.Scene) {
     this.pool = new SpritePool(scene);
+  }
+
+  setFogVisibleIds(ids: Set<string> | null) { this.fogVisibleIds = ids; }
+
+  private wasFogged(id: string): boolean {
+    return this.fogVisibleIds !== null && !this.fogVisibleIds.has(id);
+  }
+
+  private snapOrMove(sprite: Phaser.GameObjects.Sprite, id: string, nx: number, ny: number, type: string, tickRateMs: number) {
+    if (this.wasFogged(id)) {
+      this.moving.delete(id);
+      sprite.setPosition(nx, ny);
+    } else {
+      this.startMove(sprite, id, nx, ny, type, tickRateMs);
+    }
   }
 
   reconcileFull(entities: Map<string, Entity>, playerColors: Record<string, string>, tickRateMs: number) {
@@ -26,7 +42,7 @@ export class EntityManager {
         const nx = entity.x * TILE_SIZE + TILE_SIZE / 2;
         const ny = entity.y * TILE_SIZE + TILE_SIZE / 2;
         if (existing.x !== nx || existing.y !== ny) {
-          this.startMove(existing, id, nx, ny, entity.type, tickRateMs);
+          this.snapOrMove(existing, id, nx, ny, entity.type, tickRateMs);
         }
       } else {
         this.create(entity, playerColors);
@@ -48,7 +64,7 @@ export class EntityManager {
         const nx = entity.x * TILE_SIZE + TILE_SIZE / 2;
         const ny = entity.y * TILE_SIZE + TILE_SIZE / 2;
         if (existing.x !== nx || existing.y !== ny) {
-          this.startMove(existing, id, nx, ny, entity.type, tickRateMs);
+          this.snapOrMove(existing, id, nx, ny, entity.type, tickRateMs);
         }
       } else {
         this.create(entity, playerColors);
@@ -66,6 +82,15 @@ export class EntityManager {
 
   update(dt: number) {
     for (const [id, m] of this.moving) {
+      if (this.fogVisibleIds && !this.fogVisibleIds.has(id)) {
+        m.elapsed += dt;
+        if (m.elapsed >= m.duration) {
+          const sprite = this.sprites.get(id);
+          if (sprite) { sprite.x = m.toX; sprite.y = m.toY; }
+          this.moving.delete(id);
+        }
+        continue;
+      }
       m.elapsed += dt;
       const t = Math.min(m.elapsed / m.duration, 1);
       const sprite = this.sprites.get(id);

@@ -18,8 +18,10 @@ export class SocketService implements OnDestroy {
   private lobbyUpdateSubject = new Subject<LobbyData>();
   private lobbyStartedSubject = new Subject<LobbyStartedEvent>();
   private lobbyCancelledSubject = new Subject<{ lobbyId: string }>();
+  private queueUpdateSubject = new Subject<Record<string, number>>();
 
   countdownTick$: Observable<CountdownEvent> = this.tickSubject.asObservable();
+  queueUpdate$: Observable<Record<string, number>> = this.queueUpdateSubject.asObservable();
   countdownCancelled$: Observable<string> = this.cancelledSubject.asObservable();
   requeued$: Observable<string> = this.requeuedSubject.asObservable();
   gameFound$: Observable<GameFoundEvent> = this.gameFoundSubject.asObservable();
@@ -56,6 +58,10 @@ export class SocketService implements OnDestroy {
 
     this.matchSocket.on('gameFound', (data: GameFoundEvent) => {
       this.gameFoundSubject.next(data);
+    });
+
+    this.matchSocket.on('queueUpdate', (data: { counts: Record<string, number> }) => {
+      this.queueUpdateSubject.next(data.counts);
     });
   }
 
@@ -129,6 +135,7 @@ export class SocketService implements OnDestroy {
     this.requeuedSubject.complete();
     this.gameFoundSubject.complete();
     this.stateUpdateSubject.complete();
+    this.queueUpdateSubject.complete();
     this.lobbyUpdateSubject.complete();
     this.lobbyStartedSubject.complete();
     this.lobbyCancelledSubject.complete();
