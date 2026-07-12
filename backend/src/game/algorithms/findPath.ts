@@ -77,6 +77,8 @@ function reconstructPath(
   return path;
 }
 
+const MAX_PATH_NODES = 500;
+
 export function findPath(
   fromX: number,
   fromY: number,
@@ -102,8 +104,14 @@ export function findPath(
 
   let bestNode = { x: fromX, y: fromY };
   let bestDist = manhattan({ x: fromX, y: fromY }, { x: toX, y: toY });
+  let nodesExplored = 0;
 
   while (open.size > 0) {
+    if (++nodesExplored > MAX_PATH_NODES) {
+      const result = reconstructPath(cameFrom, key, bestNode.x, bestNode.y);
+      if (USE_PATH_CACHE && pathCache && result.length > 1) pathCache.store(toX, toY, result, maxW);
+      return result;
+    }
     const cur = open.pop()!;
     const curKey = key(cur.x, cur.y);
 

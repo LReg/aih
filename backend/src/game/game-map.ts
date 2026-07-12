@@ -127,6 +127,12 @@ export class GameMap {
     return tile !== null && !tile.entityId;
   }
 
+  isTilePassableForMove(x: number, y: number, ownerId: string): boolean {
+    if (this.isTileEmpty(x, y)) return true;
+    const entity = this.getEntityAt(x, y);
+    return entity !== undefined && entity.ownerId !== ownerId;
+  }
+
   getEntityAt(x: number, y: number): Entity | undefined {
     const tile = this.getTile(x, y);
     if (!tile?.entityId) return;

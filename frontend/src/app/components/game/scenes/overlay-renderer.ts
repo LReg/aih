@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GameState } from '../../../types/game.types';
+import { Entity, GameState } from '../../../types/game.types';
 import { TILE_SIZE } from './texture-generator';
 
 export class OverlayRenderer {
@@ -8,6 +8,7 @@ export class OverlayRenderer {
   private attackEyeGraphics!: Phaser.GameObjects.Graphics;
   private selectionRectGraphics!: Phaser.GameObjects.Graphics;
   private targetingGraphics!: Phaser.GameObjects.Graphics;
+  private spreadGraphics!: Phaser.GameObjects.Graphics;
   private targetingLabel!: Phaser.GameObjects.Text;
 
   private busyIds = new Set<string>();
@@ -19,6 +20,7 @@ export class OverlayRenderer {
 
   create() {
     this.targetingGraphics = this.scene.add.graphics().setDepth(1);
+    this.spreadGraphics = this.scene.add.graphics().setDepth(2);
     this.highlightGraphics = this.scene.add.graphics().setDepth(2);
     this.busyGraphics = this.scene.add.graphics().setDepth(3);
     this.attackEyeGraphics = this.scene.add.graphics().setDepth(4);
@@ -32,14 +34,14 @@ export class OverlayRenderer {
     ).setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000).setVisible(false);
   }
 
-  updateAll(state: GameState | null, selectedIds: Set<string>, playerId: string) {
+  updateAll(entitiesMap: Map<string, Entity> | null, selectedIds: Set<string>, playerId: string) {
     this.selectedIds = selectedIds;
     this.playerId = playerId;
     this.busyIds.clear();
     this.attackIds.clear();
-    if (!state) return;
+    if (!entitiesMap) return;
 
-    for (const [id, entity] of state.map.entities) {
+    for (const [id, entity] of entitiesMap) {
       if (entity.type !== 'soldier') continue;
       if (entity.ownerId === playerId && entity.state.status === 'building-barracks') {
         this.busyIds.add(id);
@@ -50,9 +52,9 @@ export class OverlayRenderer {
     }
 
     this.redraw(id => {
-      const e = state.map.entities.find(([eid]) => eid === id);
-      if (!e) return undefined;
-      return { x: e[1].x * TILE_SIZE + TILE_SIZE / 2, y: e[1].y * TILE_SIZE + TILE_SIZE / 2 };
+      const entity = entitiesMap.get(id);
+      if (!entity) return undefined;
+      return { x: entity.x * TILE_SIZE + TILE_SIZE / 2, y: entity.y * TILE_SIZE + TILE_SIZE / 2 };
     });
   }
 
@@ -150,6 +152,21 @@ export class OverlayRenderer {
 
   clearTargeting() {
     this.targetingGraphics.clear();
+    this.spreadGraphics.clear();
+  }
+
+  drawSpreadPreview(positions: { x: number; y: number }[], color: number) {
+    this.spreadGraphics.clear();
+    for (const p of positions) {
+      const cx = p.x * TILE_SIZE + TILE_SIZE / 2;
+      const cy = p.y * TILE_SIZE + TILE_SIZE / 2;
+      this.spreadGraphics.fillStyle(color, 0.35);
+      this.spreadGraphics.fillRect(p.x * TILE_SIZE, p.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      this.spreadGraphics.lineStyle(1.5, color, 0.7);
+      this.spreadGraphics.strokeRect(p.x * TILE_SIZE, p.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      this.spreadGraphics.fillStyle(color, 0.9);
+      this.spreadGraphics.fillCircle(cx, cy, 3);
+    }
   }
 
   showTargetingLabel(text: string | null) {
@@ -162,6 +179,7 @@ export class OverlayRenderer {
 
   destroy() {
     this.targetingGraphics.destroy();
+    this.spreadGraphics.destroy();
     this.highlightGraphics.destroy();
     this.busyGraphics.destroy();
     this.attackEyeGraphics.destroy();

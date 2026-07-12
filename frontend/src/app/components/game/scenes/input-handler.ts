@@ -12,6 +12,8 @@ export interface GameSceneAPI {
   targetingAction(): 'walk' | 'attack' | null;
   overlays: OverlayRenderer;
   entityAt(tileX: number, tileY: number): Entity | null;
+  entitiesInRect(wxMin: number, wyMin: number, wxMax: number, wyMax: number): Entity[];
+  getSpreadPreview(tileX: number, tileY: number): { x: number; y: number }[];
   updateHighlights(): void;
   cancelTargeting(): void;
   onSelectionChanged: Subject<string[]>;
@@ -51,19 +53,18 @@ export class InputHandler {
 
     this.scene.input.on('wheel', (_pointer: unknown, _gos: unknown, _dx: number, dy: number) => {
       const cam = this.scene.cameras.main;
-      const newZoom = Phaser.Math.Clamp(cam.zoom - dy * 0.0002, 0.1, 6);
+      const factor = 0.001;
+      const newZoom = Phaser.Math.Clamp(cam.zoom * (1 - dy * factor), 0.1, 6);
       if (newZoom === cam.zoom) return;
+      cam.setZoom(newZoom);
       const zoomingIn = newZoom > cam.zoom;
       if (zoomingIn) {
         const worldX = cam.scrollX + this.cursorX / cam.zoom;
         const worldY = cam.scrollY + this.cursorY / cam.zoom;
         const targetX = worldX - cam.width / (2 * newZoom);
         const targetY = worldY - cam.height / (2 * newZoom);
-        cam.setZoom(newZoom);
-        cam.scrollX = cam.scrollX + (targetX - cam.scrollX) / 6;
-        cam.scrollY = cam.scrollY + (targetY - cam.scrollY) / 6;
-      } else {
-        cam.setZoom(newZoom);
+        cam.scrollX += (targetX - cam.scrollX) * 0.25;
+        cam.scrollY += (targetY - cam.scrollY) * 0.25;
       }
     });
 
@@ -165,6 +166,12 @@ export class InputHandler {
 
     if (this.api.targetingAction()) {
       this.api.overlays.drawTargetingHover(pointer.worldX, pointer.worldY, this.api.targetingAction(), this.api.gameState());
+
+      const tileX = Math.floor(pointer.worldX / TILE_SIZE);
+      const tileY = Math.floor(pointer.worldY / TILE_SIZE);
+      const positions = this.api.getSpreadPreview(tileX, tileY);
+      const color = this.api.targetingAction() === 'attack' ? 0xff3333 : 0x33ff33;
+      this.api.overlays.drawSpreadPreview(positions, color);
     }
   }
 
@@ -242,19 +249,16 @@ export class InputHandler {
   }
 
   private finishDragSelect() {
-    const gs = this.api.gameState();
-    if (!this.dragRect || !gs) return;
+    if (!this.dragRect) return;
     const minX = Math.min(this.dragRect.x1, this.dragRect.x2);
     const minY = Math.min(this.dragRect.y1, this.dragRect.y2);
     const maxX = Math.max(this.dragRect.x1, this.dragRect.x2);
     const maxY = Math.max(this.dragRect.y1, this.dragRect.y2);
 
+    const pid = this.api.playerId();
     const newSelected = new Set<string>();
-    for (const [id, entity] of gs.map.entities) {
-      if (entity.ownerId !== this.api.playerId()) continue;
-      const ex = entity.x * TILE_SIZE + TILE_SIZE / 2;
-      const ey = entity.y * TILE_SIZE + TILE_SIZE / 2;
-      if (ex >= minX && ex <= maxX && ey >= minY && ey <= maxY) newSelected.add(id);
+    for (const entity of this.api.entitiesInRect(minX, minY, maxX, maxY)) {
+      if (entity.ownerId === pid) newSelected.add(entity.id);
     }
     this.api.setSelectedIds(newSelected);
     this.api.updateHighlights();

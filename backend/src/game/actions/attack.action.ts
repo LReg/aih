@@ -22,7 +22,7 @@ export function attackAction(game: Game, action: QueuedAction): void {
 
   const targets = getSpreadPositions(
     payload.x, payload.y, entities.length,
-    (x, y) => game.map.isTileEmpty(x, y),
+    (x, y) => game.map.isTilePassableForMove(x, y, action.playerId),
     game.map.width, game.map.height,
   );
 

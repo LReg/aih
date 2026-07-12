@@ -5,6 +5,7 @@ import { TILE_SIZE } from './texture-generator';
 import { EntityManager } from './entity-manager';
 import { OverlayRenderer } from './overlay-renderer';
 import { InputHandler, GameSceneAPI } from './input-handler';
+import { getSpreadPositions } from './get-spread-positions';
 
 export class GameScene extends Phaser.Scene {
   readonly overlays = new OverlayRenderer(this);
@@ -63,7 +64,8 @@ export class GameScene extends Phaser.Scene {
     return this.entitiesMap.get(id);
   }
 
-  override update() {
+  override update(time: number, delta: number) {
+    this.entityManager.update(delta);
     this.overlays.updatePositions((id) => {
       const sprite = this.entityManager.getSprite(id);
       if (!sprite) return undefined;
@@ -83,22 +85,36 @@ export class GameScene extends Phaser.Scene {
       onActionRequest: this.onActionRequest,
       onTargetingChanged: this.onTargetingChanged,
       entityAt: (tx, ty) => this.entityAt(tx, ty),
-      updateHighlights: () => this.overlays.updateAll(this.gameState, this.selectedIds, this.playerId),
+      updateHighlights: () => this.overlays.updateAll(this.entitiesMap, this.selectedIds, this.playerId),
       cancelTargeting: () => this.cancelTargeting(),
+      entitiesInRect: (wxMin, wyMin, wxMax, wyMax) => this.entitiesInRect(wxMin, wyMin, wxMax, wyMax),
+      getSpreadPreview: (tileX, tileY) => this.getSpreadPreview(tileX, tileY),
     };
   }
 
   updateFromState(update: StateUpdate) {
     if ('diff' in update && update.diff) {
-      this.applyDiff(update);
+      const diff = update as GameStateDiff;
+      this.applyDiff(diff);
+      if (this.gameState) {
+        this.entityManager.reconcileIncremental(
+          new Map(diff.changed), diff.removed,
+          this.gameState.playerColors, this.gameState.tickRateMs,
+        );
+      }
     } else {
       this.applyFull(update as GameState);
+      if (this.gameState) {
+        this.entityManager.reconcileFull(
+          this.entitiesMap,
+          this.gameState.playerColors, this.gameState.tickRateMs,
+        );
+      }
     }
 
     if (this.gameState) {
-      this.entityManager.reconcile(this.gameState, this.gameState.tickRateMs);
       this.cleanSelection();
-      this.overlays.updateAll(this.gameState, this.selectedIds, this.playerId);
+      this.overlays.updateAll(this.entitiesMap, this.selectedIds, this.playerId);
     }
 
     if (!this.hasCentered && this.gameState) this.centerOnPlayer();
@@ -138,8 +154,6 @@ export class GameScene extends Phaser.Scene {
       this.entitiesMap.set(id, entity);
       this.entitySpatialMap.set(`${entity.x},${entity.y}`, id);
     }
-
-    this.gameState.map.entities = [...this.entitiesMap.entries()];
   }
 
   private buildSpatialMap() {
@@ -155,10 +169,51 @@ export class GameScene extends Phaser.Scene {
     return this.entitiesMap.get(id) || null;
   }
 
+  private entitiesInRect(worldMinX: number, worldMinY: number, worldMaxX: number, worldMaxY: number): Entity[] {
+    const minTileX = Math.max(0, Math.floor(worldMinX / TILE_SIZE));
+    const minTileY = Math.max(0, Math.floor(worldMinY / TILE_SIZE));
+    const maxTileX = Math.floor(worldMaxX / TILE_SIZE);
+    const maxTileY = Math.floor(worldMaxY / TILE_SIZE);
+    if (!this.gameState) return [];
+    const clampedMaxTileX = Math.min(maxTileX, this.gameState.map.width - 1);
+    const clampedMaxTileY = Math.min(maxTileY, this.gameState.map.height - 1);
+    const found: Entity[] = [];
+    for (let tx = minTileX; tx <= clampedMaxTileX; tx++) {
+      for (let ty = minTileY; ty <= clampedMaxTileY; ty++) {
+        const id = this.entitySpatialMap.get(`${tx},${ty}`);
+        if (id) {
+          const entity = this.entitiesMap.get(id);
+          if (entity) found.push(entity);
+        }
+      }
+    }
+    return found;
+  }
+
+  private getSpreadPreview(tileX: number, tileY: number): { x: number; y: number }[] {
+    if (!this.gameState) return [];
+    const soldiers = [...this.selectedIds].filter(id => {
+      const e = this.entitiesMap.get(id);
+      return e && e.type === 'soldier';
+    });
+    const count = soldiers.length;
+    if (count === 0) return [];
+
+    const isAvailable = this.targetingAction === 'attack'
+      ? (x: number, y: number) => {
+          const id = this.entitySpatialMap.get(`${x},${y}`);
+          if (!id) return true;
+          const e = this.entitiesMap.get(id);
+          return e !== undefined && e.ownerId !== this.playerId;
+        }
+      : (x: number, y: number) => !this.entitySpatialMap.has(`${x},${y}`);
+
+    return getSpreadPositions(tileX, tileY, count, isAvailable, this.gameState.map.width, this.gameState.map.height);
+  }
+
   private centerOnPlayer() {
-    const state = this.gameState!;
     if (!this.playerId) return;
-    for (const [, entity] of state.map.entities) {
+    for (const [, entity] of this.entitiesMap) {
       if (entity.ownerId === this.playerId && entity.type === 'soldier') {
         const cam = this.cameras.main;
         cam.scrollX = entity.x * TILE_SIZE + TILE_SIZE / 2 - cam.width / 2 / cam.zoom;
