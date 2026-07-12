@@ -10,17 +10,10 @@ interface Movement {
   duration: number;
 }
 
-const CULL_MARGIN = 64;
-
 export class EntityManager {
   private sprites = new Map<string, Phaser.GameObjects.Sprite>();
   private pool: SpritePool;
   private moving = new Map<string, Movement>();
-
-  private camLeft = 0;
-  private camTop = 0;
-  private camRight = 800;
-  private camBottom = 600;
 
   constructor(private scene: Phaser.Scene) {
     this.pool = new SpritePool(scene);
@@ -72,12 +65,6 @@ export class EntityManager {
   }
 
   update(dt: number) {
-    const cam = this.scene.cameras.main;
-    this.camLeft = cam.scrollX - CULL_MARGIN;
-    this.camTop = cam.scrollY - CULL_MARGIN;
-    this.camRight = cam.scrollX + cam.width / cam.zoom + CULL_MARGIN;
-    this.camBottom = cam.scrollY + cam.height / cam.zoom + CULL_MARGIN;
-
     for (const [id, m] of this.moving) {
       m.elapsed += dt;
       const t = Math.min(m.elapsed / m.duration, 1);
@@ -88,14 +75,6 @@ export class EntityManager {
       }
       const nx = m.fromX + (m.toX - m.fromX) * t;
       const ny = m.fromY + (m.toY - m.fromY) * t;
-      if (nx < this.camLeft || nx > this.camRight || ny < this.camTop || ny > this.camBottom) {
-        if (t >= 1) {
-          sprite.x = nx;
-          sprite.y = ny;
-          this.moving.delete(id);
-        }
-        continue;
-      }
       sprite.x = nx;
       sprite.y = ny;
       if (t >= 1) this.moving.delete(id);
@@ -108,7 +87,7 @@ export class EntityManager {
         fromX: sprite.x, fromY: sprite.y,
         toX: nx, toY: ny,
         elapsed: 0,
-        duration: tickRateMs * 0.85,
+        duration: tickRateMs,
       });
     } else {
       sprite.setPosition(nx, ny);
