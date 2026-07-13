@@ -24,7 +24,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   private userId = '';
   private subs: Subscription[] = [];
   private sceneReady = false;
-  private tickRateMs = 500;
+  tickRateMs = 500;
   private startedAt = 0;
   private peaceUntil = 0;
 
@@ -41,11 +41,34 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   elapsedTime = '00:00';
   playerName = '';
   playerColor = '#ccc';
+  showTickInfo = false;
+  tickCalcTimes: number[] = [];
 
   get peaceRemaining(): number {
     if (!this.peaceUntil) return 0;
     return Math.max(0, Math.floor((this.peaceUntil - Date.now()) / 1000));
   }
+
+  get tickCalcAvg(): number {
+    const n = this.tickCalcTimes.length;
+    if (n === 0) return 0;
+    let sum = 0;
+    for (let i = 0; i < n; i++) sum += this.tickCalcTimes[i];
+    return Math.round(sum / n);
+  }
+  get tickCalcMin(): number {
+    if (this.tickCalcTimes.length === 0) return 0;
+    let m = this.tickCalcTimes[0];
+    for (let i = 1; i < this.tickCalcTimes.length; i++) if (this.tickCalcTimes[i] < m) m = this.tickCalcTimes[i];
+    return m;
+  }
+  get tickCalcMax(): number {
+    if (this.tickCalcTimes.length === 0) return 0;
+    let m = this.tickCalcTimes[0];
+    for (let i = 1; i < this.tickCalcTimes.length; i++) if (this.tickCalcTimes[i] > m) m = this.tickCalcTimes[i];
+    return m;
+  }
+  sign(n: number): string { return n >= 0 ? '+' : ''; }
 
   get selectedSoldiers(): number {
     return this.selectedEntities.filter(e => e.type === 'soldier').length;
@@ -172,6 +195,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     this.tickRateMs = state.tickRateMs;
     this.startedAt = state.startedAt;
     this.peaceUntil = state.peaceUntil;
+    if (state.tickCalcTime !== undefined) this.recordTickCalc(state.tickCalcTime);
     this.elapsedTime = this.formatElapsed(state.startedAt);
     this.playerName = this.userId;
     this.playerColor = state.playerColors?.[this.userId] || '#ccc';
@@ -191,6 +215,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
 
   private applyDiff(diff: GameStateDiff) {
     this.gameTick = diff.tick;
+    if (diff.tickCalcTime !== undefined) this.recordTickCalc(diff.tickCalcTime);
     this.gameScene.updateFromState(diff);
     this.barracksCount = this.gameScene.countPlayerBarracks(this.userId);
     this.soldierCount = this.gameScene.countPlayerSoldiers(this.userId);
@@ -246,6 +271,13 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   }
 
   leaveGame() { this.router.navigate(['/']); }
+
+  toggleTickInfo() { this.showTickInfo = !this.showTickInfo; }
+
+  private recordTickCalc(ms: number) {
+    this.tickCalcTimes.push(ms);
+    if (this.tickCalcTimes.length > 100) this.tickCalcTimes.shift();
+  }
 
   ngOnDestroy() {
     this.subs.forEach(s => s.unsubscribe());

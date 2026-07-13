@@ -50,6 +50,7 @@ export interface GameState {
   startedAt: number;
   peaceUntil: number;
   tickRateMs: number;
+  tickCalcTime?: number;
   maxBarracks: number;
   darknessRange: number;
   map: {
@@ -71,6 +72,7 @@ export interface GameStateDiff {
   diff: true;
   changed: [string, Entity][];
   removed: string[];
+  tickCalcTime?: number;
 }
 
 export type StateUpdate = GameState | GameStateDiff;

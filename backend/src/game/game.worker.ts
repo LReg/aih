@@ -72,10 +72,12 @@ function tick(gameId: string) {
   const game = games.get(gameId);
   if (!game || game.state !== 'running') return;
 
+  const tickStart = performance.now();
   game.tick++;
   const actions = game.actionQueue.splice(0, game.actionQueue.length);
   processActions(game, actions);
   processGame(game);
+  const tickCalcTime = Math.round(performance.now() - tickStart - game.tickRateMs);
 
   const config = GAMEMODE_CONFIGS[game.gamemode];
   let winners: string[] = [];
@@ -97,9 +99,9 @@ function tick(gameId: string) {
   }
 
   if (game.tick === 1 || game.tick % 10 === 0) {
-    parentPort?.postMessage({ type: 'stateUpdate', gameId: game.id, state: game.toJSON() });
+    parentPort?.postMessage({ type: 'stateUpdate', gameId: game.id, state: game.toJSON(), tickCalcTime });
   } else {
-    parentPort?.postMessage({ type: 'stateDiff', gameId: game.id, diff: game.toDiffJSON() });
+    parentPort?.postMessage({ type: 'stateDiff', gameId: game.id, diff: game.toDiffJSON(), tickCalcTime });
   }
 }
 

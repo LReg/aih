@@ -19,10 +19,25 @@
         <img src="/assets/soldiers.png" class="asset-icon" />
         <span class="info-val">{{ soldierCount }}</span>
       </div>
-      <div class="info-box">
+      <div class="info-box tick-box" (click)="toggleTickInfo()">
         <span class="info-icon">&#9201;</span>
         <span class="info-val">{{ gameTick }}</span>
       </div>
+      @if (showTickInfo) {
+        <div class="tick-popup" (click)="$event.stopPropagation()">
+          <div class="tick-popup-header">Tick Timing <span class="tick-rate">({{ tickRateMs }}ms rate)</span></div>
+          @if (tickCalcTimes.length > 0) {
+            <div class="tick-popup-row"><span>Latest</span><span [class.tick-slow]="tickCalcTimes[tickCalcTimes.length-1] > 5" [class.tick-fast]="tickCalcTimes[tickCalcTimes.length-1] < -5">{{ sign(tickCalcTimes[tickCalcTimes.length-1]) }}{{ tickCalcTimes[tickCalcTimes.length-1] }}ms</span></div>
+            <div class="tick-popup-row"><span>Avg</span><span [class.tick-slow]="tickCalcAvg > 5" [class.tick-fast]="tickCalcAvg < -5">{{ sign(tickCalcAvg) }}{{ tickCalcAvg }}ms</span></div>
+            <div class="tick-popup-row"><span>Fastest</span><span class="tick-fast">{{ sign(tickCalcMin) }}{{ tickCalcMin }}ms</span></div>
+            <div class="tick-popup-row"><span>Slowest</span><span class="tick-slow">{{ sign(tickCalcMax) }}{{ tickCalcMax }}ms</span></div>
+            <div class="tick-popup-row"><span>Samples</span><span>{{ tickCalcTimes.length }}</span></div>
+          } @else {
+            <div class="tick-popup-row"><span>Waiting for data…</span></div>
+          }
+          <button class="tick-popup-close" (click)="showTickInfo = false">&times;</button>
+        </div>
+      }
     </div>
     <div class="top-right">
       @if (!gameFinished) {

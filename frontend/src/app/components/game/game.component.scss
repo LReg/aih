@@ -149,6 +149,35 @@
 }
 .btn-leave:hover { background: #2a1515; }
 
+.tick-box { cursor: pointer; }
+.tick-box:hover { border-color: #6c5ce7; }
+
+.tick-popup {
+  position: fixed; top: 52px; left: 50%; transform: translateX(-50%);
+  background: #141428; border: 1px solid #2a2a45; border-radius: 8px;
+  padding: 12px 16px; z-index: 3000;
+  box-shadow: 0 8px 32px rgba(0,0,0,.6);
+  min-width: 200px;
+}
+.tick-popup-header {
+  font-size: 12px; font-weight: 700; color: #e8e8f0;
+  border-bottom: 1px solid #2a2a45; padding-bottom: 6px; margin-bottom: 6px;
+}
+.tick-rate { font-weight: 400; color: #7070a0; }
+.tick-popup-row {
+  display: flex; justify-content: space-between; gap: 16px;
+  font-size: 11px; color: #c0c0d0; padding: 2px 0;
+}
+.tick-popup-row span:first-child { color: #9090b0; }
+.tick-slow { color: #ef4444 !important; font-weight: 600; }
+.tick-fast { color: #5ce75c !important; font-weight: 600; }
+.tick-popup-close {
+  position: absolute; top: 4px; right: 6px;
+  background: none; border: none; color: #7070a0;
+  font-size: 16px; cursor: pointer; line-height: 1;
+}
+.tick-popup-close:hover { color: #e8e8f0; }
+
 @media (max-width: 480px) {
   .top-bar { padding: 4px 8px; min-height: 40px; gap: 4px; }
   .player-label { font-size: 12px; }

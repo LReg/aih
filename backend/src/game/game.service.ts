@@ -31,11 +31,15 @@ export class GameService implements OnModuleDestroy {
         }
         case 'stateUpdate': {
           this.gameDao.saveGame(msg.state);
-          this.gameGateway.broadcastStateUpdate(msg.state);
+          const state = msg.state as any;
+          state.tickCalcTime = msg.tickCalcTime;
+          this.gameGateway.broadcastStateUpdate(state);
           break;
         }
         case 'stateDiff': {
-          this.gameGateway.broadcastStateDiff(msg.gameId, msg.diff);
+          const diff = msg.diff as any;
+          diff.tickCalcTime = msg.tickCalcTime;
+          this.gameGateway.broadcastStateDiff(msg.gameId, diff);
           break;
         }
         case 'gameEnd': {
