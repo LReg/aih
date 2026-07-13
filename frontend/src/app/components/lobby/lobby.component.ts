@@ -92,6 +92,7 @@ import { environment } from '../../../environments/environment';
                 <select [value]="lobby?.settings?.tickRateMs"
                   (change)="updateSetting('tickRateMs', +$any($event.target).value)">
                   <option value="500">500ms &mdash; Fast</option>
+                  <option value="1000">1000ms &mdash; Normal</option>
                   <option value="1500">1500ms &mdash; Slow</option>
                   <option value="2000">2000ms &mdash; Very Slow</option>
                 </select>
@@ -138,6 +139,24 @@ import { environment } from '../../../environments/environment';
                   (change)="updateSetting('darknessRange', +$any($event.target).value)" />
               } @else {
                 <span class="setting-val">{{ lobby?.settings?.darknessRange }}</span>
+              }
+            </div>
+            <div class="setting-field">
+              <label>Barrack Build Time (ticks)</label>
+              @if (isHost) {
+                <input type="number" min="1" max="200" [value]="lobby?.settings?.barracksBuildTime"
+                  (change)="updateSetting('barracksBuildTime', +$any($event.target).value)" />
+              } @else {
+                <span class="setting-val">{{ lobby?.settings?.barracksBuildTime }}</span>
+              }
+            </div>
+            <div class="setting-field">
+              <label>Soldier Production Time (ticks)</label>
+              @if (isHost) {
+                <input type="number" min="1" max="500" [value]="lobby?.settings?.soldierProductionTime"
+                  (change)="updateSetting('soldierProductionTime', +$any($event.target).value)" />
+              } @else {
+                <span class="setting-val">{{ lobby?.settings?.soldierProductionTime }}</span>
               }
             </div>
           </div>

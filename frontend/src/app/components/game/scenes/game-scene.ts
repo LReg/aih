@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
 import { Subject } from 'rxjs';
-import { GameState, GameStateDiff, StateUpdate, TileType, Entity, isOverridable } from '../../../types/game.types';
+import { GameState, GameStateDiff, StateUpdate, TileType, TERRAIN_COLORS, Entity, isOverridable } from '../../../types/game.types';
 import { TILE_SIZE } from './texture-generator';
 import { EntityManager } from './entity-manager';
 import { OverlayRenderer } from './overlay-renderer';
 import { InputHandler, GameSceneAPI } from './input-handler';
 import { getSpreadPositions } from './get-spread-positions';
+import { perfStart, perfEnd, perfInit, perfFrame } from './perf';
 
 export class GameScene extends Phaser.Scene {
   readonly overlays = new OverlayRenderer(this);
@@ -15,8 +16,9 @@ export class GameScene extends Phaser.Scene {
 
   private entityManager!: EntityManager;
   private inputHandler!: InputHandler;
-  private tileGraphics!: Phaser.GameObjects.Graphics;
   private fogGraphics!: Phaser.GameObjects.Graphics;
+  private renderStart = 0;
+  private renderTimeLog = 0;
   private hasCentered = false;
   private gridDrawn = false;
 
@@ -35,9 +37,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   create() {
-    this.tileGraphics = this.add.graphics().setDepth(0);
+    perfInit();
+    this.cameras.main.setZoom(0.3);
     this.fogGraphics = this.add.graphics().setDepth(0);
     this.overlays.create();
+
+    this.events.on('prerender', this.onPreRender, this);
+    this.events.on('render', this.onPostRender, this);
 
     this.entityManager = new EntityManager(this);
     this.inputHandler = new InputHandler(this, this.apiHandle);
@@ -77,14 +83,25 @@ export class GameScene extends Phaser.Scene {
   }
 
   override update(time: number, delta: number) {
+    perfStart('gameScene.update');
     this.entityManager.setFogVisibleIds(this.darknessRange > 0 ? this.fogVisibleIds : null);
     this.entityManager.update(delta);
+    this.overlays.setLod(this.entityManager.isLod);
     const visible = this.darknessRange > 0 ? this.fogVisibleIds : undefined;
     this.overlays.updatePositions((id) => {
-      const sprite = this.entityManager.getSprite(id);
-      if (!sprite) return undefined;
-      return { x: sprite.x, y: sprite.y };
+      return this.entityManager.getEntityPosition(id);
     }, visible);
+    perfEnd('gameScene.update');
+    console.log('[RENDER_TIME]', this.renderTimeLog.toFixed(2) + 'ms');
+    perfFrame(this);
+  }
+
+  private onPreRender() {
+    this.renderStart = performance.now();
+  }
+
+  private onPostRender() {
+    this.renderTimeLog = performance.now() - this.renderStart;
   }
 
   get apiHandle(): GameSceneAPI {
@@ -107,6 +124,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   updateFromState(update: StateUpdate) {
+    perfStart('updateFromState');
     if ('diff' in update && update.diff) {
       const diff = update as GameStateDiff;
       this.applyDiff(diff);
@@ -137,6 +155,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (!this.hasCentered && this.gameState) this.centerOnPlayer();
+    perfEnd('updateFromState');
   }
 
   private applyFull(state: GameState) {
@@ -263,34 +282,35 @@ export class GameScene extends Phaser.Scene {
 
   private drawGrid(state: GameState) {
     const { width, height, tiles } = state.map;
-    this.tileGraphics.clear();
-    this.tileGraphics.fillStyle(0x3a5f0b, 1);
-    this.tileGraphics.fillRect(0, 0, width * TILE_SIZE, height * TILE_SIZE);
+    const g = this.add.graphics();
+    g.fillStyle(0x3a5f0b, 1);
+    g.fillRect(0, 0, width * TILE_SIZE, height * TILE_SIZE);
 
     for (const [key, tile] of tiles) {
       const [x, y] = key.split(',').map(Number);
-      const color = tile.terrain === TileType.Water ? 0x1a5276
-        : tile.terrain === TileType.Mountain ? 0x5d4037
-        : tile.terrain === TileType.Wall ? 0x2d2d2d
-        : 0x3a5f0b;
-      this.tileGraphics.fillStyle(color, 1);
-      this.tileGraphics.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      g.fillStyle(TERRAIN_COLORS[tile.terrain], 1);
+      g.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     }
 
-    this.tileGraphics.lineStyle(1, 0x2d4a08, 0.3);
+    g.lineStyle(1, 0x2d4a08, 0.3);
     for (let x = 0; x <= width; x++) {
-      this.tileGraphics.moveTo(x * TILE_SIZE, 0);
-      this.tileGraphics.lineTo(x * TILE_SIZE, height * TILE_SIZE);
+      g.moveTo(x * TILE_SIZE, 0);
+      g.lineTo(x * TILE_SIZE, height * TILE_SIZE);
     }
     for (let y = 0; y <= height; y++) {
-      this.tileGraphics.moveTo(0, y * TILE_SIZE);
-      this.tileGraphics.lineTo(width * TILE_SIZE, y * TILE_SIZE);
+      g.moveTo(0, y * TILE_SIZE);
+      g.lineTo(width * TILE_SIZE, y * TILE_SIZE);
     }
-    this.tileGraphics.strokePath();
+    g.strokePath();
+
+    g.generateTexture('tilemap', width * TILE_SIZE, height * TILE_SIZE);
+    this.add.image(0, 0, 'tilemap').setOrigin(0, 0).setDepth(0);
+    g.destroy();
   }
 
   private computeVisibility() {
-    if (!this.gameState) return;
+    perfStart('computeVisibility');
+    if (!this.gameState) { perfEnd('computeVisibility'); return; }
     const friends: { x: number; y: number }[] = [];
     for (const e of this.entitiesMap.values()) {
       if (e.ownerId === this.playerId) {
@@ -332,11 +352,7 @@ export class GameScene extends Phaser.Scene {
     for (const key of visibleTiles) {
       const [x, y] = key.split(',').map(Number);
       const tile = tileMap.get(key);
-      const color = !tile ? 0x3a5f0b
-        : tile.terrain === TileType.Water ? 0x1a5276
-        : tile.terrain === TileType.Mountain ? 0x5d4037
-        : tile.terrain === TileType.Wall ? 0x2d2d2d
-        : 0x3a5f0b;
+      const color = !tile ? TERRAIN_COLORS[TileType.Grass] : TERRAIN_COLORS[tile.terrain];
       this.fogGraphics.fillStyle(color, 1);
       this.fogGraphics.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     }
@@ -364,5 +380,6 @@ export class GameScene extends Phaser.Scene {
       }
     }
     this.entityManager.updateVisibility(this.fogVisibleIds);
+    perfEnd('computeVisibility');
   }
 }

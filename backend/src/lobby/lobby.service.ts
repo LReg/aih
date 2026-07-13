@@ -62,9 +62,31 @@ export class LobbyService {
     this.lobbyGateway.broadcastLobbyUpdate(lobby);
   }
 
+  private readonly SETTING_LIMITS: Record<string, { min: number; max: number }> = {
+    tickRateMs: { min: 100, max: 10000 },
+    mapWidth: { min: 10, max: 500 },
+    mapHeight: { min: 10, max: 500 },
+    maxPlayers: { min: 2, max: 20 },
+    peaceDurationMs: { min: 0, max: 3600000 },
+    startingSoldiers: { min: 0, max: 100 },
+    maxBarracks: { min: 0, max: 100 },
+    darknessRange: { min: 0, max: 100 },
+    barracksBuildTime: { min: 1, max: 1000 },
+    soldierProductionTime: { min: 1, max: 1000 },
+  };
+
   updateSettings(id: string, userId: string, settings: Partial<LobbySettings>): Lobby {
     const lobby = this.get(id);
     if (lobby.hostId !== userId) throw new ForbiddenException('Only host can change settings');
+
+    for (const [key, value] of Object.entries(settings)) {
+      const limit = this.SETTING_LIMITS[key];
+      if (limit && typeof value === 'number') {
+        const clamped = Math.max(limit.min, Math.min(limit.max, value));
+        if (clamped !== value) (settings as Record<string, unknown>)[key] = clamped;
+      }
+    }
+
     Object.assign(lobby.settings, settings);
     this.logger.log(`lobby=${id} settings updated by ${userId}`);
     this.lobbyGateway.broadcastLobbyUpdate(lobby);
@@ -87,6 +109,8 @@ export class LobbyService {
     baseConfig.startingSoldiers = lobby.settings.startingSoldiers;
     baseConfig.maxBarracks = lobby.settings.maxBarracks;
     baseConfig.darknessRange = lobby.settings.darknessRange;
+    baseConfig.barracksBuildTime = lobby.settings.barracksBuildTime;
+    baseConfig.soldierProductionTime = lobby.settings.soldierProductionTime;
 
     const gameId = this.gameService.launchGame(lobby.players, lobby.settings.gamemode, baseConfig);
     this.lobbyGateway.broadcastLobbyStarted(lobby, gameId);

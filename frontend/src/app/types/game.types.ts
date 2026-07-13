@@ -5,6 +5,13 @@ export enum TileType {
   Wall = 'wall',
 }
 
+export const TERRAIN_COLORS: Record<TileType, number> = {
+  [TileType.Grass]: 0x3a5f0b,
+  [TileType.Water]: 0x1a5276,
+  [TileType.Mountain]: 0x5d4037,
+  [TileType.Wall]: 0x2d2d2d,
+};
+
 export interface Tile {
   terrain: TileType;
   entityId?: string;
@@ -95,6 +102,8 @@ export interface LobbySettings {
   startingSoldiers: number;
   maxBarracks: number;
   darknessRange: number;
+  barracksBuildTime: number;
+  soldierProductionTime: number;
 }
 
 export interface LobbyData {

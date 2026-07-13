@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { GameMap, Entity } from './game-map';
+import { GameMap, Entity, TileType } from './game-map';
 import { Gamemode } from './gamemode.config';
 import type { GamemodeConfig } from './gamemode.config';
 
@@ -81,7 +81,7 @@ export class Game {
       map: {
         width: this.map.width,
         height: this.map.height,
-        tiles: Array.from(this.map.tiles.entries()),
+        tiles: Array.from(this.map.tiles.entries()).filter(([, t]) => t.terrain !== TileType.Grass),
         entities: Array.from(this.map.entities.entries()).map(
           ([id, e]) => [id, this.serializeEntity(e)] as [string, Record<string, unknown>],
         ),

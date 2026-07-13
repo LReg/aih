@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { Entity, GameState, isOverridable } from '../../../types/game.types';
 import { TILE_SIZE } from './texture-generator';
+import { perfStart, perfEnd } from './perf';
 
 export class OverlayRenderer {
   private highlightGraphics!: Phaser.GameObjects.Graphics;
@@ -16,8 +17,18 @@ export class OverlayRenderer {
   private selectedIds = new Set<string>();
   private playerId = '';
   private visibleIds: Set<string> | null = null;
+  private lod = false;
 
   constructor(private scene: Phaser.Scene) {}
+
+  setLod(v: boolean) {
+    this.lod = v;
+    if (v) {
+      this.busyGraphics.clear();
+      this.attackEyeGraphics.clear();
+      this.highlightGraphics.clear();
+    }
+  }
 
   create() {
     this.targetingGraphics = this.scene.add.graphics().setDepth(1);
@@ -36,12 +47,13 @@ export class OverlayRenderer {
   }
 
   updateAll(entitiesMap: Map<string, Entity> | null, selectedIds: Set<string>, playerId: string, visibleIds?: Set<string>) {
+    perfStart('ov.updateAll');
     this.selectedIds = selectedIds;
     this.playerId = playerId;
     this.visibleIds = visibleIds || null;
+    if (this.lod || !entitiesMap) { perfEnd('ov.updateAll'); return; }
     this.busyIds.clear();
     this.attackIds.clear();
-    if (!entitiesMap) return;
 
     for (const [id, entity] of entitiesMap) {
       if (this.visibleIds && !this.visibleIds.has(id)) continue;
@@ -53,14 +65,16 @@ export class OverlayRenderer {
         this.attackIds.add(id);
       }
     }
+    perfEnd('ov.updateAll');
   }
 
   updatePositions(getSpritePos: (id: string) => { x: number; y: number } | undefined, visibleIds?: Set<string>) {
+    perfStart('ov.updatePos');
     if (visibleIds) this.visibleIds = visibleIds;
     this.busyGraphics.clear();
     this.attackEyeGraphics.clear();
     this.highlightGraphics.clear();
-    if (this.selectedIds.size === 0 && this.busyIds.size === 0 && this.attackIds.size === 0) return;
+    if (this.selectedIds.size === 0 && this.busyIds.size === 0 && this.attackIds.size === 0) { perfEnd('ov.updatePos'); return; }
 
     for (const id of this.busyIds) {
       if (this.visibleIds && !this.visibleIds.has(id)) continue;
@@ -113,6 +127,7 @@ export class OverlayRenderer {
 
       this.highlightGraphics.strokePath();
     }
+    perfEnd('ov.updatePos');
   }
 
   drawSelectionRect(r: { x1: number; y1: number; x2: number; y2: number }) {

@@ -11,6 +11,8 @@ export interface LobbySettings {
   startingSoldiers: number;
   maxBarracks: number;
   darknessRange: number;
+  barracksBuildTime: number;
+  soldierProductionTime: number;
 }
 
 export class Lobby {
@@ -33,6 +35,8 @@ export class Lobby {
       startingSoldiers: 5,
       maxBarracks: 15,
       darknessRange: 10,
+      barracksBuildTime: 45,
+      soldierProductionTime: 90,
       ...settings,
     };
     this.createdAt = new Date();
