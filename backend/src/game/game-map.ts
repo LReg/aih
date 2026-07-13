@@ -151,7 +151,7 @@ export class GameMap {
       const sy = margin + (rng() % (this.height - margin * 2));
       if (sy >= spawnZoneTop && sy <= spawnZoneBot && sx >= spawnZoneLeft && sx <= spawnZoneRight) continue;
 
-      const len = 6 + (rng() % 8);
+      const len = 15 + (rng() % 18);
       const shape = rng() % 4;
 
       if (shape === 0) {
@@ -160,10 +160,10 @@ export class GameMap {
         this.drawLine(sx, sy, 0, 1, len);
       } else if (shape === 2) {
         this.drawLine(sx, sy, 1, 0, len);
-        this.drawLine(sx + len - 1, sy + 1, 0, 1, 3 + (rng() % 3));
+        this.drawLine(sx + len - 1, sy + 1, 0, 1, 7 + (rng() % 6));
       } else {
         this.drawLine(sx, sy, 0, 1, len);
-        this.drawLine(sx + 1, sy + len - 1, 1, 0, 3 + (rng() % 3));
+        this.drawLine(sx + 1, sy + len - 1, 1, 0, 7 + (rng() % 6));
       }
     }
 
@@ -185,7 +185,7 @@ export class GameMap {
     left: number,
     right: number,
   ) {
-    const cornerLen = 5 + (rng() % 6);
+    const cornerLen = 12 + (rng() % 14);
 
     const corners = [
       { x: left, y: top, dx: 1, dy: 0 },

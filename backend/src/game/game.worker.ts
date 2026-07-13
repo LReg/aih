@@ -12,18 +12,15 @@ const CLEANUP_DELAY_MS = 300_000;
 
 function spawnCluster(game: Game, ownerId: string, cx: number, cy: number, count: number): number {
   let placed = 0;
-  for (let r = 0; r <= 3 && placed < count; r++) {
-    for (let dx = -r; dx <= r; dx++) {
-      for (let dy = -r; dy <= r; dy++) {
-        if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
-        if (placed >= count) return placed;
-        const x = cx + dx;
-        const y = cy + dy;
-        if (game.map.isInBounds(x, y) && game.map.isTileEmpty(x, y)) {
-          const soldier = createSoldier(ownerId, x, y);
-          game.map.addEntity(soldier);
-          placed++;
-        }
+  const maxR = Math.ceil(Math.sqrt(count));
+  for (let dy = -maxR; dy <= maxR && placed < count; dy++) {
+    for (let dx = -maxR; dx <= maxR && placed < count; dx++) {
+      const x = cx + dx;
+      const y = cy + dy;
+      if (game.map.isInBounds(x, y) && game.map.isTileEmpty(x, y)) {
+        const soldier = createSoldier(ownerId, x, y);
+        game.map.addEntity(soldier);
+        placed++;
       }
     }
   }

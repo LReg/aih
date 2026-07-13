@@ -57,7 +57,7 @@ export function perfLog() {
 
 let logTimer: ReturnType<typeof setInterval> | null = null;
 
-export function perfFrame(scene: Phaser.Scene, renderTimeMs?: number) {
+export function perfFrame(scene: Phaser.Scene, renderTimeMs?: number, emSprites?: number, emDots?: number) {
   if (!PERF_LOG) return;
   try {
     renderer = scene.game.renderer;
@@ -65,6 +65,18 @@ export function perfFrame(scene: Phaser.Scene, renderTimeMs?: number) {
     updateList = (scene.sys.updateList as any);
     childrenCount = scene.children.length;
     texCount = (scene.textures as any).getTextureKeys?.()?.length ?? 0;
+    if (emSprites !== undefined) {
+      let c = counters.get('sprites');
+      if (!c) { c = { sum: 0, count: 0 }; counters.set('sprites', c); }
+      c.sum += emSprites;
+      c.count++;
+    }
+    if (emDots !== undefined) {
+      let c = counters.get('dots');
+      if (!c) { c = { sum: 0, count: 0 }; counters.set('dots', c); }
+      c.sum += emDots;
+      c.count++;
+    }
     if (renderTimeMs !== undefined) {
       let c = counters.get('render');
       if (!c) { c = { sum: 0, count: 0 }; counters.set('render', c); }

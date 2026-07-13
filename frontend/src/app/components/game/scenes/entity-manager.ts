@@ -18,7 +18,7 @@ interface DotData {
   color: number;
 }
 
-const MAX_ANIMATED = 200;
+const MAX_ANIMATED = 3000;
 const ZOOM_DOT_THRESHOLD = 0.4;
 const DOT_SIZE = 6.5;
 
@@ -267,6 +267,9 @@ export class EntityManager {
       sprite.setVisible(visibleIds.has(id));
     }
   }
+
+  get spriteCount(): number { return this.sprites.size; }
+  get dotCount(): number { return this.dots.size; }
 
   destroyAll() {
     this.moving.clear();

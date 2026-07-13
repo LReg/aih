@@ -68,7 +68,7 @@ export class LobbyService {
     mapHeight: { min: 10, max: 500 },
     maxPlayers: { min: 2, max: 20 },
     peaceDurationMs: { min: 0, max: 3600000 },
-    startingSoldiers: { min: 0, max: 100 },
+    startingSoldiers: { min: 0, max: 5000 },
     maxBarracks: { min: 0, max: 100 },
     darknessRange: { min: 0, max: 100 },
     barracksBuildTime: { min: 1, max: 1000 },

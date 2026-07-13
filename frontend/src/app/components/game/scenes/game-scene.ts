@@ -106,7 +106,7 @@ export class GameScene extends Phaser.Scene {
       return this.entityManager.getEntityPosition(id);
     }, visible);
     perfEnd('gameScene.update');
-    perfFrame(this, this.renderTimeLog);
+    perfFrame(this, this.renderTimeLog, this.entityManager.spriteCount, this.entityManager.dotCount);
   }
 
   private onPreRender() {
@@ -350,7 +350,7 @@ export class GameScene extends Phaser.Scene {
     const lookup = this.tileLookup;
     const grassColor = TERRAIN_COLORS[TileType.Grass];
 
-    // Mark visible tiles per row using byte mask (avoids per-tile circle check + Set sorting)
+    // Mark visible tiles per row using byte mask (per-friend circle, no tuples)
     const rowMarks: (Uint8Array | undefined)[] = new Array(height);
     for (const f of friends) {
       for (let dy = -range; dy <= range; dy++) {
@@ -365,7 +365,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Scan rows → horizontal runs grouped by terrain color (no sorting)
+    // Scan rows → horizontal runs grouped by terrain color
     const byColor = new Map<number, Array<{ x: number; y: number; w: number }>>();
     const addRect = (color: number, x: number, y: number, w: number) => {
       let list = byColor.get(color);
@@ -405,13 +405,7 @@ export class GameScene extends Phaser.Scene {
     this.fogVisibleIds.clear();
     for (const e of this.entitiesMap.values()) {
       if (e.ownerId === this.playerId) { this.fogVisibleIds.add(e.id); continue; }
-      for (const f of friends) {
-        const dx = e.x - f.x, dy = e.y - f.y;
-        if (dx * dx + dy * dy <= rangeSq) {
-          this.fogVisibleIds.add(e.id);
-          break;
-        }
-      }
+      if (rowMarks[e.y]?.[e.x]) this.fogVisibleIds.add(e.id);
     }
     perfEnd('computeFogData');
   }
