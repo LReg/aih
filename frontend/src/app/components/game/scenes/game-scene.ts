@@ -21,6 +21,7 @@ export class GameScene extends Phaser.Scene {
   private renderTimeLog = 0;
   private hasCentered = false;
   private gridDrawn = false;
+  private tileLookup: TileType[][] = [];
 
   gameState: GameState | null = null;
   selectedIds = new Set<string>();
@@ -32,6 +33,10 @@ export class GameScene extends Phaser.Scene {
   private darknessRange = 0;
   private fogVisibleIds = new Set<string>();
 
+  private fogDirty = false;
+  private fogNeedsClear = false;
+  private fogColorBatches: Array<{ color: number; rects: Array<{ x: number; y: number; w: number }> }> = [];
+
   constructor() {
     super({ key: 'GameScene' });
   }
@@ -39,7 +44,7 @@ export class GameScene extends Phaser.Scene {
   create() {
     perfInit();
     this.cameras.main.setZoom(0.3);
-    this.fogGraphics = this.add.graphics().setDepth(0);
+    this.fogGraphics = this.add.graphics().setDepth(1);
     this.overlays.create();
 
     this.events.on('prerender', this.onPreRender, this);
@@ -84,6 +89,7 @@ export class GameScene extends Phaser.Scene {
 
   override update(time: number, delta: number) {
     perfStart('gameScene.update');
+    this.renderFog();
     this.entityManager.setFogVisibleIds(this.darknessRange > 0 ? this.fogVisibleIds : null);
     this.entityManager.update(delta);
     this.overlays.setLod(this.entityManager.isLod);
@@ -92,8 +98,7 @@ export class GameScene extends Phaser.Scene {
       return this.entityManager.getEntityPosition(id);
     }, visible);
     perfEnd('gameScene.update');
-    console.log('[RENDER_TIME]', this.renderTimeLog.toFixed(2) + 'ms');
-    perfFrame(this);
+    perfFrame(this, this.renderTimeLog);
   }
 
   private onPreRender() {
@@ -124,6 +129,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   updateFromState(update: StateUpdate) {
+    if (!this.entityManager) return;
     perfStart('updateFromState');
     if ('diff' in update && update.diff) {
       const diff = update as GameStateDiff;
@@ -146,12 +152,8 @@ export class GameScene extends Phaser.Scene {
 
     if (this.gameState) {
       this.cleanSelection();
-      if (this.darknessRange > 0) {
-        this.computeVisibility();
-        this.overlays.updateAll(this.entitiesMap, this.selectedIds, this.playerId, this.fogVisibleIds);
-      } else {
-        this.overlays.updateAll(this.entitiesMap, this.selectedIds, this.playerId);
-      }
+      this.computeFogData();
+      this.overlays.updateAll(this.entitiesMap, this.selectedIds, this.playerId, this.darknessRange > 0 ? this.fogVisibleIds : undefined);
     }
 
     if (!this.hasCentered && this.gameState) this.centerOnPlayer();
@@ -174,6 +176,7 @@ export class GameScene extends Phaser.Scene {
 
     this.entitiesMap = new Map(state.map.entities);
     this.buildSpatialMap();
+    this.buildTileLookup(state);
   }
 
   private applyDiff(diff: GameStateDiff) {
@@ -199,6 +202,16 @@ export class GameScene extends Phaser.Scene {
     this.entitySpatialMap.clear();
     for (const [id, entity] of this.entitiesMap) {
       this.entitySpatialMap.set(`${entity.x},${entity.y}`, id);
+    }
+  }
+
+  private buildTileLookup(state: GameState) {
+    const { width, height, tiles } = state.map;
+    this.tileLookup = new Array(width);
+    for (let x = 0; x < width; x++) this.tileLookup[x] = new Array(height).fill(undefined);
+    for (const [key, tile] of tiles) {
+      const [x, y] = key.split(',').map(Number);
+      this.tileLookup[x][y] = tile.terrain;
     }
   }
 
@@ -308,66 +321,79 @@ export class GameScene extends Phaser.Scene {
     g.destroy();
   }
 
-  private computeVisibility() {
-    perfStart('computeVisibility');
-    if (!this.gameState) { perfEnd('computeVisibility'); return; }
+  private computeFogData() {
+    perfStart('computeFogData');
+    if (!this.gameState) { perfEnd('computeFogData'); return; }
     const friends: { x: number; y: number }[] = [];
     for (const e of this.entitiesMap.values()) {
-      if (e.ownerId === this.playerId) {
-        friends.push({ x: e.x, y: e.y });
-      }
+      if (e.ownerId === this.playerId) friends.push({ x: e.x, y: e.y });
     }
+
     if (this.darknessRange <= 0 || friends.length === 0) {
-      this.entityManager.showAll();
-      this.fogGraphics.clear();
-      this.fogVisibleIds.clear();
+      this.fogNeedsClear = true;
+      this.fogDirty = false;
+      perfEnd('computeFogData');
       return;
     }
+
     const range = this.darknessRange;
     const rangeSq = range * range;
+    const { width, height } = this.gameState.map;
+    const lookup = this.tileLookup;
+    const grassColor = TERRAIN_COLORS[TileType.Grass];
 
-    // visible tiles
-    const visibleTiles = new Set<string>();
-    const { width, height, tiles } = this.gameState.map;
-    const tileMap = new Map(tiles);
+    // Mark visible tiles per row using byte mask (avoids per-tile circle check + Set sorting)
+    const rowMarks: (Uint8Array | undefined)[] = new Array(height);
     for (const f of friends) {
-      const minX = Math.max(0, f.x - range);
-      const maxX = Math.min(width - 1, f.x + range);
-      const minY = Math.max(0, f.y - range);
-      const maxY = Math.min(height - 1, f.y + range);
-      for (let x = minX; x <= maxX; x++) {
-        for (let y = minY; y <= maxY; y++) {
-          const dx = x - f.x, dy = y - f.y;
-          if (dx * dx + dy * dy <= rangeSq) {
-            visibleTiles.add(`${x},${y}`);
-          }
-        }
+      for (let dy = -range; dy <= range; dy++) {
+        const y = f.y + dy;
+        if (y < 0 || y >= height) continue;
+        const halfWidth = Math.floor(Math.sqrt(rangeSq - dy * dy));
+        const minX = Math.max(0, f.x - halfWidth);
+        const maxX = Math.min(width - 1, f.x + halfWidth);
+        let mask = rowMarks[y];
+        if (!mask) { mask = new Uint8Array(width); rowMarks[y] = mask; }
+        mask.fill(1, minX, maxX + 1);
       }
     }
 
-    // draw fog: gray for everything, terrain color for visible tiles
-    this.fogGraphics.clear();
-    this.fogGraphics.fillStyle(0x1a1a1a, 1);
-    this.fogGraphics.fillRect(0, 0, width * TILE_SIZE, height * TILE_SIZE);
-    for (const key of visibleTiles) {
-      const [x, y] = key.split(',').map(Number);
-      const tile = tileMap.get(key);
-      const color = !tile ? TERRAIN_COLORS[TileType.Grass] : TERRAIN_COLORS[tile.terrain];
-      this.fogGraphics.fillStyle(color, 1);
-      this.fogGraphics.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    // Scan rows → horizontal runs grouped by terrain color (no sorting)
+    const byColor = new Map<number, Array<{ x: number; y: number; w: number }>>();
+    const addRect = (color: number, x: number, y: number, w: number) => {
+      let list = byColor.get(color);
+      if (!list) { list = []; byColor.set(color, list); }
+      list.push({ x, y, w });
+    };
+    for (let y = 0; y < height; y++) {
+      const mask = rowMarks[y];
+      if (!mask) continue;
+      let runStart = -1;
+      let runColor = 0;
+      for (let x = 0; x < width; x++) {
+        if (mask[x]) {
+          const t = lookup[x]?.[y];
+          const c = t !== undefined ? TERRAIN_COLORS[t] : grassColor;
+          if (runStart < 0) { runStart = x; runColor = c; }
+          else if (c !== runColor) {
+            addRect(runColor, runStart, y, x - runStart);
+            runStart = x;
+            runColor = c;
+          }
+        } else if (runStart >= 0) {
+          addRect(runColor, runStart, y, x - runStart);
+          runStart = -1;
+        }
+      }
+      if (runStart >= 0) addRect(runColor, runStart, y, width - runStart);
     }
-    this.fogGraphics.lineStyle(1, 0x5a5a5a, 0.35);
-    for (let x = 0; x <= width; x++) {
-      this.fogGraphics.moveTo(x * TILE_SIZE, 0);
-      this.fogGraphics.lineTo(x * TILE_SIZE, height * TILE_SIZE);
-    }
-    for (let y = 0; y <= height; y++) {
-      this.fogGraphics.moveTo(0, y * TILE_SIZE);
-      this.fogGraphics.lineTo(width * TILE_SIZE, y * TILE_SIZE);
-    }
-    this.fogGraphics.strokePath();
 
-    // visible entities
+    this.fogColorBatches = [];
+    for (const [color, rects] of byColor) {
+      this.fogColorBatches.push({ color, rects });
+    }
+    this.fogDirty = true;
+    this.fogNeedsClear = false;
+
     this.fogVisibleIds.clear();
     for (const e of this.entitiesMap.values()) {
       if (e.ownerId === this.playerId) { this.fogVisibleIds.add(e.id); continue; }
@@ -379,7 +405,36 @@ export class GameScene extends Phaser.Scene {
         }
       }
     }
+    perfEnd('computeFogData');
+  }
+
+  private renderFog() {
+    perfStart('renderFog');
+    if (this.fogNeedsClear) {
+      this.fogGraphics.clear();
+      this.fogVisibleIds.clear();
+      this.fogNeedsClear = false;
+      this.entityManager.showAll();
+      perfEnd('renderFog');
+      return;
+    }
+    if (!this.fogDirty) { perfEnd('renderFog'); return; }
+
+    const { width, height } = this.gameState!.map;
+    this.fogGraphics.clear();
+    this.fogGraphics.fillStyle(0x1a1a1a, 1);
+    this.fogGraphics.fillRect(0, 0, width * TILE_SIZE, height * TILE_SIZE);
+
+    for (const batch of this.fogColorBatches) {
+      this.fogGraphics.fillStyle(batch.color, 1);
+      for (const rect of batch.rects) {
+        this.fogGraphics.fillRect(rect.x * TILE_SIZE, rect.y * TILE_SIZE, rect.w * TILE_SIZE, TILE_SIZE);
+      }
+    }
+
+    this.fogDirty = false;
+    this.fogColorBatches = [];
     this.entityManager.updateVisibility(this.fogVisibleIds);
-    perfEnd('computeVisibility');
+    perfEnd('renderFog');
   }
 }

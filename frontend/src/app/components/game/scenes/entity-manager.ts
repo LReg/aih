@@ -190,7 +190,6 @@ export class EntityManager {
       this.dotGraphics.destroy();
       this.dotGraphics = this.scene.add.graphics().setDepth(2);
       this.dotsDirty = true;
-      this.nukeWebGL();
 
     } else if (zoom >= ZOOM_DOT_THRESHOLD && this.usingDots) {
       this.usingDots = false;
@@ -202,17 +201,6 @@ export class EntityManager {
       }
     }
     perfEnd('em.checkLod');
-  }
-
-  private nukeWebGL() {
-    try {
-      const gl = (this.scene.game.renderer as any).gl;
-      const ext = gl.getExtension('WEBGL_lose_context');
-      if (ext) {
-        ext.loseContext();
-        setTimeout(() => { try { ext.restoreContext(); } catch (_e) { /* noop */ } }, 50);
-      }
-    } catch (_e) { /* noop */ }
   }
 
   private rebuildDotRT() {

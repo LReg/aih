@@ -31,12 +31,12 @@ export class OverlayRenderer {
   }
 
   create() {
-    this.targetingGraphics = this.scene.add.graphics().setDepth(1);
-    this.spreadGraphics = this.scene.add.graphics().setDepth(2);
-    this.highlightGraphics = this.scene.add.graphics().setDepth(2);
-    this.busyGraphics = this.scene.add.graphics().setDepth(3);
-    this.attackEyeGraphics = this.scene.add.graphics().setDepth(4);
-    this.selectionRectGraphics = this.scene.add.graphics().setDepth(3);
+    this.targetingGraphics = this.scene.add.graphics().setDepth(3);
+    this.spreadGraphics = this.scene.add.graphics().setDepth(4);
+    this.highlightGraphics = this.scene.add.graphics().setDepth(4);
+    this.busyGraphics = this.scene.add.graphics().setDepth(5);
+    this.attackEyeGraphics = this.scene.add.graphics().setDepth(6);
+    this.selectionRectGraphics = this.scene.add.graphics().setDepth(5);
     this.targetingLabel = this.scene.add.text(
       this.scene.cameras.main.width / 2, 12, '',
       {

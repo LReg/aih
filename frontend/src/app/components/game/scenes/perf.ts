@@ -57,7 +57,7 @@ export function perfLog() {
 
 let logTimer: ReturnType<typeof setInterval> | null = null;
 
-export function perfFrame(scene: Phaser.Scene) {
+export function perfFrame(scene: Phaser.Scene, renderTimeMs?: number) {
   if (!PERF_LOG) return;
   try {
     renderer = scene.game.renderer;
@@ -65,6 +65,12 @@ export function perfFrame(scene: Phaser.Scene) {
     updateList = (scene.sys.updateList as any);
     childrenCount = scene.children.length;
     texCount = (scene.textures as any).getTextureKeys?.()?.length ?? 0;
+    if (renderTimeMs !== undefined) {
+      let c = counters.get('render');
+      if (!c) { c = { sum: 0, count: 0 }; counters.set('render', c); }
+      c.sum += renderTimeMs;
+      c.count++;
+    }
     const now = performance.now();
     if (lastFrameTime > 0) {
       const dt = now - lastFrameTime;
