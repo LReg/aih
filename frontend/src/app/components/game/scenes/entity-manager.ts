@@ -20,7 +20,7 @@ interface DotData {
 
 const MAX_ANIMATED = 200;
 const ZOOM_DOT_THRESHOLD = 0.4;
-const DOT_SIZE = 5;
+const DOT_SIZE = 7;
 
 export class EntityManager {
   private sprites = new Map<string, Phaser.GameObjects.Sprite>();
@@ -206,20 +206,28 @@ export class EntityManager {
   private rebuildDotRT() {
     perfStart('em.rebuildDotRT');
     const zoom = this.scene.cameras.main.zoom;
-    const ds = Math.max(2, Math.round(DOT_SIZE / zoom));
+    const ds = Math.min(Math.max(2, Math.round(DOT_SIZE / zoom)), 30);
     const half = ds / 2;
     this.dotGraphics.clear();
-    const byColor = new Map<number, { x: number; y: number }[]>();
+    const soldierByColor = new Map<number, { x: number; y: number }[]>();
+    const barracksByColor = new Map<number, { x: number; y: number }[]>();
     for (const [id, d] of this.dots) {
       if (this.wasFogged(id)) continue;
-      let list = byColor.get(d.color);
-      if (!list) { list = []; byColor.set(d.color, list); }
+      const map = d.type === 'barracks' ? barracksByColor : soldierByColor;
+      let list = map.get(d.color);
+      if (!list) { list = []; map.set(d.color, list); }
       list.push(d);
     }
-    for (const [color, list] of byColor) {
-      const r = (color >> 16) & 0xff;
-      const g = (color >> 8) & 0xff;
-      const b = color & 0xff;
+    for (const [color, list] of soldierByColor) {
+      this.dotGraphics.fillStyle(color, 0.75);
+      for (const d of list) {
+        this.dotGraphics.fillRect(d.x - half, d.y - half, ds, ds);
+      }
+    }
+    for (const [color, list] of barracksByColor) {
+      const r = Math.round(((color >> 16) & 0xff) * 0.5);
+      const g = Math.round(((color >> 8) & 0xff) * 0.5);
+      const b = Math.round((color & 0xff) * 0.5);
       this.dotGraphics.fillStyle((r << 16) | (g << 8) | b, 0.75);
       for (const d of list) {
         this.dotGraphics.fillRect(d.x - half, d.y - half, ds, ds);

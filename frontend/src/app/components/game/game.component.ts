@@ -33,6 +33,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   gameFinished = false;
   maxBarracks = 15;
   barracksCount = 0;
+  soldierCount = 0;
   showSurrenderModal = false;
   winners: string[] = [];
   isWinner = false;
@@ -177,6 +178,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     this.maxBarracks = state.maxBarracks;
     this.gameScene.updateFromState(state);
     this.barracksCount = this.gameScene.countPlayerBarracks(this.userId);
+    this.soldierCount = this.gameScene.countPlayerSoldiers(this.userId);
 
     if (state.state === 'finished') {
       this.gameFinished = true;
@@ -191,6 +193,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     this.gameTick = diff.tick;
     this.gameScene.updateFromState(diff);
     this.barracksCount = this.gameScene.countPlayerBarracks(this.userId);
+    this.soldierCount = this.gameScene.countPlayerSoldiers(this.userId);
   }
 
   private formatElapsed(startedAt: number): string {

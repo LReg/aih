@@ -87,6 +87,14 @@ export class GameScene extends Phaser.Scene {
     return count;
   }
 
+  countPlayerSoldiers(playerId: string): number {
+    let count = 0;
+    for (const entity of this.entitiesMap.values()) {
+      if (entity.ownerId === playerId && entity.type === 'soldier') count++;
+    }
+    return count;
+  }
+
   override update(time: number, delta: number) {
     perfStart('gameScene.update');
     this.renderFog();
