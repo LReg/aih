@@ -20,7 +20,7 @@ interface DotData {
 
 const MAX_ANIMATED = 200;
 const ZOOM_DOT_THRESHOLD = 0.4;
-const DOT_SIZE = 7;
+const DOT_SIZE = 6.5;
 
 export class EntityManager {
   private sprites = new Map<string, Phaser.GameObjects.Sprite>();
@@ -206,7 +206,7 @@ export class EntityManager {
   private rebuildDotRT() {
     perfStart('em.rebuildDotRT');
     const zoom = this.scene.cameras.main.zoom;
-    const ds = Math.min(Math.max(2, Math.round(DOT_SIZE / zoom)), 30);
+    const ds = Math.min(Math.max(2, Math.round(DOT_SIZE / zoom)), 27);
     const half = ds / 2;
     this.dotGraphics.clear();
     const soldierByColor = new Map<number, { x: number; y: number }[]>();
