@@ -6,6 +6,7 @@ import { GameDao } from '../dao/game-dao';
 import { GameGateway } from './game.gateway';
 import { Gamemode } from './gamemode.config';
 import type { GamemodeConfig } from './gamemode.config';
+import { AdminStatsService } from '../admin/admin-stats.service';
 
 @Injectable()
 export class GameService implements OnModuleDestroy {
@@ -15,6 +16,7 @@ export class GameService implements OnModuleDestroy {
   constructor(
     private gameDao: GameDao,
     private gameGateway: GameGateway,
+    private adminStats: AdminStatsService,
   ) {
     this.startWorker();
   }
@@ -27,6 +29,7 @@ export class GameService implements OnModuleDestroy {
         case 'gameStart': {
           this.gameDao.saveGame(msg.state);
           this.gameGateway.broadcastGameStart(msg);
+          this.adminStats.recordGameStart(msg.gameId, msg.gamemode);
           break;
         }
         case 'stateUpdate': {
@@ -34,18 +37,21 @@ export class GameService implements OnModuleDestroy {
           const state = msg.state as any;
           state.tickCalcTime = msg.tickCalcTime;
           this.gameGateway.broadcastStateUpdate(state);
+          this.adminStats.recordTick(msg.gameId, msg.tickCalcTime);
           break;
         }
         case 'stateDiff': {
           const diff = msg.diff as any;
           diff.tickCalcTime = msg.tickCalcTime;
           this.gameGateway.broadcastStateDiff(msg.gameId, diff);
+          this.adminStats.recordTick(msg.gameId, msg.tickCalcTime);
           break;
         }
         case 'gameEnd': {
           this.gameDao.saveGame(msg.state);
           this.gameGateway.broadcastGameEnd(msg);
           this.gameGateway.broadcastStateUpdate(msg.state);
+          this.adminStats.recordGameEnd(msg.gameId, msg.state?.tick || 0);
           break;
         }
         case 'actionResult': {

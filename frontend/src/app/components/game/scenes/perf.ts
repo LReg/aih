@@ -33,8 +33,13 @@ export function perfLog() {
   const avgDt = frameCount > 0 ? (totalFrameDt / frameCount).toFixed(1) : '?';
   const lines: string[] = [];
   for (const [label, c] of counters) {
-    const avg = (c.sum / c.count).toFixed(2);
-    lines.push(`${label}: avg=${avg}ms calls=${c.count} total=${c.sum.toFixed(2)}ms`);
+    if (label === 'sprites' || label === 'dots') {
+      const avgCount = (c.sum / c.count).toFixed(0);
+      lines.push(`${label}=${avgCount}`);
+    } else {
+      const avg = (c.sum / c.count).toFixed(2);
+      lines.push(`${label}: avg=${avg}ms calls=${c.count} total=${c.sum.toFixed(0)}ms`);
+    }
   }
   lines.push(`frameGap=${avgDt}ms frames=${frameCount}`);
   if (renderer) {
@@ -49,7 +54,7 @@ export function perfLog() {
   if (updateList) {
     lines.push(`updates=${(updateList.list ?? updateList).length}`);
   }
-  console.log('[PERF] ' + lines.join(' | '));
+  console.log('[PERF]\n    ' + lines.join('\n    '));
   counters.clear();
   totalFrameDt = 0;
   frameCount = 0;

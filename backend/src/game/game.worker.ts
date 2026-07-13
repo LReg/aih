@@ -29,20 +29,28 @@ function spawnCluster(game: Game, ownerId: string, cx: number, cy: number, count
 
 function generateSpawnPositions(map: GameMap, count: number): { x: number; y: number }[] {
   const positions: { x: number; y: number }[] = [];
-  const margin = 2;
-  const regionW = Math.floor((map.width - margin * 2) / Math.max(count, 1));
-  const midH = Math.floor(map.height / 2);
+  const cx = Math.floor(map.width / 2);
+  const cy = Math.floor(map.height / 2);
+  const R = Math.min(cx, cy) - 15;
 
   for (let i = 0; i < count; i++) {
-    const cx = margin + regionW * i + Math.floor(regionW / 2);
-    for (let dy = -2; dy <= 2; dy++) {
-      const x = cx;
-      const y = midH + dy;
-      if (map.isInBounds(x, y) && map.isTileEmpty(x, y)) {
-        positions.push({ x, y });
-        break;
+    const angle = (2 * Math.PI * i) / count - Math.PI / 2;
+    const x = Math.floor(cx + R * Math.cos(angle));
+    const y = Math.floor(cy + R * Math.sin(angle));
+
+    // Small local search for empty tile
+    let found = false;
+    for (let dy = -2; dy <= 2 && !found; dy++) {
+      for (let dx = -2; dx <= 2 && !found; dx++) {
+        const px = x + dx;
+        const py = y + dy;
+        if (map.isInBounds(px, py) && map.isTileEmpty(px, py)) {
+          positions.push({ x: px, y: py });
+          found = true;
+        }
       }
     }
+    if (!found) positions.push({ x, y });
   }
 
   return positions;
@@ -98,10 +106,12 @@ function tick(gameId: string) {
     return;
   }
 
-  if (game.tick === 1 || game.tick % 10 === 0) {
+  // Every tick: send diff (mutable objects -> JSON string to avoid structured clone)
+  parentPort?.postMessage({ type: 'stateDiff', gameId: game.id, diff: game.toDiffJSON(), tickCalcTime });
+
+  // First 10 ticks + every 10th thereafter: send full state for client verification
+  if (game.tick <= 10 || game.tick % 10 === 0) {
     parentPort?.postMessage({ type: 'stateUpdate', gameId: game.id, state: game.toJSON(), tickCalcTime });
-  } else {
-    parentPort?.postMessage({ type: 'stateDiff', gameId: game.id, diff: game.toDiffJSON(), tickCalcTime });
   }
 }
 

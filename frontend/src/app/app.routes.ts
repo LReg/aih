@@ -5,6 +5,7 @@ import {RegisterComponent} from "./components/register/register.component";
 import {HomeComponent} from "./components/home/home.component";
 import {GameComponent} from "./components/game/game.component";
 import {LobbyComponent} from "./components/lobby/lobby.component";
+import {AdminStatsComponent} from "./components/admin-stats/admin-stats.component";
 import {isLoggedIn} from "./security/IsLoggedIn";
 import { environment } from '../environments/environment';
 
@@ -37,6 +38,10 @@ export const routes: Routes = [
     path: 'lobby/:id',
     component: LobbyComponent,
     canActivate: [isLoggedIn],
+  },
+  {
+    path: 'admin-stats',
+    component: AdminStatsComponent,
   },
   {
     path: '**',

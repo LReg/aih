@@ -15,4 +15,8 @@ export class GameDao {
   removeGame(id: string) {
     this.games.delete(id);
   }
+
+  getAllGames(): any[] {
+    return Array.from(this.games.values());
+  }
 }

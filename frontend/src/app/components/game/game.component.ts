@@ -24,6 +24,8 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   private userId = '';
   private subs: Subscription[] = [];
   private sceneReady = false;
+  private pendingStates: StateUpdate[] = [];
+  private stateSub: Subscription | null = null;
   tickRateMs = 500;
   private startedAt = 0;
   private peaceUntil = 0;
@@ -104,6 +106,15 @@ export class GameComponent implements AfterViewInit, OnDestroy {
 
     this.auth.userData$().pipe(first()).subscribe(data => {
       this.userId = (data['preferred_username'] as string) || '';
+
+      // Connect socket BEFORE Phaser init to catch early state updates
+      this.socket.connectGame();
+      this.socket.joinGameRoom(this.gameId);
+      this.stateSub = this.socket.stateUpdate$.subscribe((update: StateUpdate) => {
+        if (!this.sceneReady) { this.pendingStates.push(update); return; }
+        this.handleStateUpdate(update);
+      });
+
       this.initPhaser();
     });
   }
@@ -149,33 +160,52 @@ export class GameComponent implements AfterViewInit, OnDestroy {
       this.sceneReady = true;
 
       this.fetchInitialState();
-      this.listenToSocket();
+      this.flushPendingStates();
       this.listenToSceneEvents();
     });
   }
 
-  private fetchInitialState() {
+  private fetchInitialState(retries = 10) {
     this.api.getGame(this.gameId).subscribe({
       next: (state) => {
-        if (!state?.id) { this.router.navigate(['/']); return; }
+        if (!state?.id) {
+          if (retries > 0) {
+            setTimeout(() => this.fetchInitialState(retries - 1), 500);
+          }
+          return;
+        }
         this.applyState(state);
       },
-      error: () => this.router.navigate(['/']),
+      error: () => {
+        if (retries > 0) {
+          setTimeout(() => this.fetchInitialState(retries - 1), 500);
+        }
+      },
     });
   }
 
-  private listenToSocket() {
-    this.socket.connectGame();
-    this.socket.joinGameRoom(this.gameId);
-    this.subs.push(this.socket.stateUpdate$.subscribe((update: StateUpdate) => {
+  private handleStateUpdate(update: StateUpdate) {
+    if ('diff' in update && update.diff) {
+      this.applyDiff(update as GameStateDiff);
+      return;
+    }
+    if ((update as GameState).id === this.gameId) {
+      this.applyStateAsync(update as GameState);
+    }
+  }
+
+  private flushPendingStates() {
+    let lastFull: GameState | null = null;
+    for (const update of this.pendingStates) {
       if ('diff' in update && update.diff) {
-        this.applyDiff(update as GameStateDiff);
-        return;
+        if (lastFull) this.applyDiff(update as GameStateDiff);
+      } else if ((update as GameState).id === this.gameId) {
+        const state = update as GameState;
+        if (!lastFull) { lastFull = state; this.applyState(state); }
+        else { lastFull = state; this.applyStateAsync(state); }
       }
-      if ((update as GameState).id === this.gameId) {
-        this.applyState(update as GameState);
-      }
-    }));
+    }
+    this.pendingStates = [];
   }
 
   private listenToSceneEvents() {
@@ -210,6 +240,39 @@ export class GameComponent implements AfterViewInit, OnDestroy {
       this.isWinner = state.winners.includes(this.userId);
       this.targetingMode = null;
       this.selectedEntities = [];
+    }
+  }
+
+  private applyStateAsync(state: GameState) {
+    this.gameTick = state.tick;
+    this.tickRateMs = state.tickRateMs;
+    this.startedAt = state.startedAt;
+    this.peaceUntil = state.peaceUntil;
+    if (state.tickCalcTime !== undefined) this.recordTickCalc(state.tickCalcTime);
+    this.elapsedTime = this.formatElapsed(state.startedAt);
+    this.playerColor = state.playerColors?.[this.userId] || '#ccc';
+    this.barracksCount = this.gameScene.countPlayerBarracks(this.userId);
+    this.soldierCount = this.gameScene.countPlayerSoldiers(this.userId);
+
+    if (state.state === 'finished') {
+      this.gameFinished = true;
+      this.winners = state.winners;
+      this.isWinner = state.winners.includes(this.userId);
+      this.targetingMode = null;
+      this.selectedEntities = [];
+    }
+
+    setTimeout(() => this.verifyFullState(state), 0);
+  }
+
+  private verifyFullState(state: GameState) {
+    const current = this.gameScene.entityCount;
+    const expected = state.map.entities.length;
+    if (current !== expected) {
+      console.warn(`state drift: client=${current} server=${expected}, self-healing`);
+      this.gameScene.updateFromState(state);
+      this.barracksCount = this.gameScene.countPlayerBarracks(this.userId);
+      this.soldierCount = this.gameScene.countPlayerSoldiers(this.userId);
     }
   }
 
@@ -280,9 +343,11 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.stateSub?.unsubscribe();
     this.subs.forEach(s => s.unsubscribe());
     this.socket.leaveGameRoom(this.gameId);
     this.socket.disconnectGame();
+    this.pendingStates = [];
     this.gameScene?.onSelectionChanged?.complete();
     this.gameScene?.onActionRequest?.complete();
     this.gameScene?.onTargetingChanged?.complete();

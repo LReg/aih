@@ -24,7 +24,7 @@ export class AuthGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
 
-    if (request.url === '/auth/register') {
+    if (request.url === '/auth/register' || request.url.startsWith('/admin/')) {
       return true;
     }
 

@@ -75,6 +75,8 @@ export class GameScene extends Phaser.Scene {
   get isTargeting(): boolean { return this.targetingAction !== null; }
   getGameState(): GameState | null { return this.gameState; }
 
+  get entityCount(): number { return this.entitiesMap.size; }
+
   getEntity(id: string): Entity | undefined {
     return this.entitiesMap.get(id);
   }

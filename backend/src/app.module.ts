@@ -9,9 +9,10 @@ import { GameModule } from './game/game.module';
 import { QueueModule } from './queue/queue.module';
 import { MatchmakingModule } from './matchmaking/matchmaking.module';
 import { LobbyModule } from './lobby/lobby.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
-  imports: [DatabaseModule, AuthModule, UserModule, SocketModule, GameModule, QueueModule, MatchmakingModule, LobbyModule],
+  imports: [DatabaseModule, AuthModule, UserModule, SocketModule, GameModule, QueueModule, MatchmakingModule, LobbyModule, AdminModule],
   providers: [
     {
       provide: APP_GUARD,

@@ -4,6 +4,7 @@ import { LobbyGateway } from './lobby.gateway';
 import { GameService } from '../game/game.service';
 import { GAMEMODE_CONFIGS } from '../game/gamemode.config';
 import type { LobbySettings } from './lobby';
+import { AdminStatsService } from '../admin/admin-stats.service';
 
 @Injectable()
 export class LobbyService {
@@ -14,11 +15,13 @@ export class LobbyService {
     @Inject(forwardRef(() => LobbyGateway))
     private lobbyGateway: LobbyGateway,
     private gameService: GameService,
+    private adminStats: AdminStatsService,
   ) {}
 
   create(hostId: string, settings?: Partial<LobbySettings>): Lobby {
     const lobby = new Lobby(hostId, settings);
     this.lobbies.set(lobby.id, lobby);
+    this.adminStats.recordLobbyCreated();
     this.logger.log(`created lobby=${lobby.id} host=${hostId}`);
     return lobby;
   }
@@ -117,6 +120,10 @@ export class LobbyService {
     this.lobbies.delete(id);
     this.logger.log(`lobby=${id} started game=${gameId}`);
     return gameId;
+  }
+
+  getAllLobbies(): Lobby[] {
+    return Array.from(this.lobbies.values());
   }
 
   cancel(id: string, userId: string): void {
