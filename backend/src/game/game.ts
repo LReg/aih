@@ -13,6 +13,16 @@ export interface QueuedAction {
   timestamp: number;
 }
 
+export interface Effect {
+  type: 'arrow' | 'melee';
+  fromId: string;
+  toId: string;
+  fromTileX: number;
+  fromTileY: number;
+  toTileX: number;
+  toTileY: number;
+}
+
 const COLORS = [
   '#ef4444', '#3b82f6', '#eab308', '#22c55e',
   '#f97316', '#a855f7', '#14b8a6', '#ec4899',
@@ -28,6 +38,7 @@ export class Game {
   tickRateMs: number = 500;
   config!: GamemodeConfig;
   actionQueue: QueuedAction[] = [];
+  effects: Effect[] = [];
   winners: string[] = [];
   losers: string[] = [];
   playerColors: Record<string, string>;
@@ -63,11 +74,18 @@ export class Game {
       id: e.id,
       ownerId: e.ownerId,
       type: e.type,
+      class: e.class,
       x: e.x,
       y: e.y,
       state: e.state,
       lastCommand: e.lastCommand,
     };
+  }
+
+  consumeEffects(): Effect[] {
+    const eff = this.effects;
+    this.effects = [];
+    return eff;
   }
 
   toJSON() {

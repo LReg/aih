@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { Entity } from '../../../types/game.types';
+import { Entity, Effect } from '../../../types/game.types';
 import { TILE_SIZE, parseColor } from './texture-generator';
 import { SpritePool } from './sprite-pool';
 import { perfStart, perfEnd } from './perf';
@@ -15,7 +15,18 @@ interface DotData {
   x: number;
   y: number;
   type: string;
+  soldierClass?: string;
   color: number;
+  fogged: boolean;
+}
+
+interface ArrowEffect {
+  fromX: number; fromY: number;
+  toX: number; toY: number;
+  elapsed: number;
+  duration: number;
+  color: number;
+  type: 'arrow' | 'melee';
 }
 
 const MAX_ANIMATED = 3000;
@@ -31,10 +42,13 @@ export class EntityManager {
   private usingDots = false;
   private dots = new Map<string, DotData>();
   private dotsDirty = false;
+  private arrows: ArrowEffect[] = [];
+  private arrowGraphics!: Phaser.GameObjects.Graphics;
 
   constructor(private scene: Phaser.Scene) {
     this.pool = new SpritePool(scene);
     this.dotGraphics = scene.add.graphics().setDepth(2);
+    this.arrowGraphics = scene.add.graphics().setDepth(3);
     this.usingDots = scene.cameras.main.zoom < ZOOM_DOT_THRESHOLD;
   }
 
@@ -58,14 +72,16 @@ export class EntityManager {
     }
   }
 
-  private upsertDot(id: string, x: number, y: number, type: string, color: number) {
+  private upsertDot(id: string, x: number, y: number, type: string, color: number, soldierClass?: string) {
     const existing = this.dots.get(id);
+    const fogged = this.wasFogged(id);
     if (existing) {
-      if (existing.x !== x || existing.y !== y) this.dotsDirty = true;
+      if (existing.x !== x || existing.y !== y || existing.fogged !== fogged) this.dotsDirty = true;
       existing.x = x;
       existing.y = y;
+      existing.fogged = fogged;
     } else {
-      this.dots.set(id, { x, y, type, color });
+      this.dots.set(id, { x, y, type, color, soldierClass, fogged });
       this.dotsDirty = true;
     }
   }
@@ -76,7 +92,8 @@ export class EntityManager {
       const x = entity.x * TILE_SIZE + TILE_SIZE / 2;
       const y = entity.y * TILE_SIZE + TILE_SIZE / 2;
       const color = parseColor(playerColors[entity.ownerId]);
-      this.upsertDot(id, x, y, entity.type, color);
+      const soldierClass = entity.class;
+      this.upsertDot(id, x, y, entity.type, color, soldierClass);
 
       if (!this.usingDots) {
         const existing = this.sprites.get(id);
@@ -85,7 +102,7 @@ export class EntityManager {
             this.snapOrMove(existing, id, x, y, entity.type, tickRateMs);
           }
         } else {
-          this.createSprite(id, x, y, entity.type, color);
+          this.createSprite(id, x, y, entity.type, color, soldierClass);
         }
       }
     }
@@ -106,7 +123,8 @@ export class EntityManager {
       const x = entity.x * TILE_SIZE + TILE_SIZE / 2;
       const y = entity.y * TILE_SIZE + TILE_SIZE / 2;
       const color = parseColor(playerColors[entity.ownerId]);
-      this.upsertDot(id, x, y, entity.type, color);
+      const soldierClass = entity.class;
+      this.upsertDot(id, x, y, entity.type, color, soldierClass);
 
       if (!this.usingDots) {
         const existing = this.sprites.get(id);
@@ -115,7 +133,7 @@ export class EntityManager {
             this.snapOrMove(existing, id, x, y, entity.type, tickRateMs);
           }
         } else {
-          this.createSprite(id, x, y, entity.type, color);
+          this.createSprite(id, x, y, entity.type, color, soldierClass);
         }
       }
     }
@@ -135,6 +153,8 @@ export class EntityManager {
     perfStart('em.update');
     this.checkLod();
     if (this.usingDots) {
+      this.arrows.length = 0;
+      this.arrowGraphics.clear();
       if (this.dotsDirty) {
         this.rebuildDotRT();
         this.dotsDirty = false;
@@ -142,6 +162,8 @@ export class EntityManager {
       perfEnd('em.update');
       return;
     }
+
+    this.updateArrows();
 
     if (this.moving.size > MAX_ANIMATED) {
       for (const [id, m] of this.moving) {
@@ -196,7 +218,7 @@ export class EntityManager {
       this.dotGraphics.clear();
       for (const [id, d] of this.dots) {
         if (!this.wasFogged(id)) {
-          this.createSprite(id, d.x, d.y, d.type, d.color);
+          this.createSprite(id, d.x, d.y, d.type, d.color, d.soldierClass);
         }
       }
     }
@@ -210,18 +232,52 @@ export class EntityManager {
     const half = ds / 2;
     this.dotGraphics.clear();
     const soldierByColor = new Map<number, { x: number; y: number }[]>();
+    const archerByColor = new Map<number, { x: number; y: number }[]>();
+    const tankByColor = new Map<number, { x: number; y: number }[]>();
     const barracksByColor = new Map<number, { x: number; y: number }[]>();
     for (const [id, d] of this.dots) {
       if (this.wasFogged(id)) continue;
-      const map = d.type === 'barracks' ? barracksByColor : soldierByColor;
-      let list = map.get(d.color);
-      if (!list) { list = []; map.set(d.color, list); }
-      list.push(d);
+      if (d.type === 'barracks') {
+        let list = barracksByColor.get(d.color);
+        if (!list) { list = []; barracksByColor.set(d.color, list); }
+        list.push(d);
+      } else if (d.soldierClass === 'archer') {
+        let list = archerByColor.get(d.color);
+        if (!list) { list = []; archerByColor.set(d.color, list); }
+        list.push(d);
+      } else if (d.soldierClass === 'tank') {
+        let list = tankByColor.get(d.color);
+        if (!list) { list = []; tankByColor.set(d.color, list); }
+        list.push(d);
+      } else {
+        let list = soldierByColor.get(d.color);
+        if (!list) { list = []; soldierByColor.set(d.color, list); }
+        list.push(d);
+      }
     }
     for (const [color, list] of soldierByColor) {
       this.dotGraphics.fillStyle(color, 0.75);
       for (const d of list) {
         this.dotGraphics.fillRect(d.x - half, d.y - half, ds, ds);
+      }
+    }
+    for (const [color, list] of archerByColor) {
+      this.dotGraphics.fillStyle(color, 0.75);
+      for (const d of list) {
+        this.dotGraphics.fillCircle(d.x, d.y, half);
+      }
+    }
+    for (const [color, list] of tankByColor) {
+      this.dotGraphics.fillStyle(color, 0.75);
+      for (const d of list) {
+        const w = half * 0.9;
+        const h = half * 1.6;
+        this.dotGraphics.fillRect(d.x - w, d.y - h * 0.35, w * 2, h * 0.7);
+        this.dotGraphics.fillTriangle(
+          d.x - w * 1.1, d.y + h * 0.35,
+          d.x + w * 1.1, d.y + h * 0.35,
+          d.x, d.y + h * 0.9,
+        );
       }
     }
     for (const [color, list] of barracksByColor) {
@@ -249,8 +305,15 @@ export class EntityManager {
     }
   }
 
-  private createSprite(id: string, x: number, y: number, type: string, color: number) {
-    const key = type === 'soldier' ? 'soldiers' : 'barracks';
+  private textureKey(entityType: string, soldierClass?: string): string {
+    if (entityType === 'barracks') return 'barracks';
+    if (soldierClass === 'archer') return 'archer';
+    if (soldierClass === 'tank') return 'tank';
+    return 'soldiers';
+  }
+
+  private createSprite(id: string, x: number, y: number, type: string, color: number, soldierClass?: string) {
+    const key = this.textureKey(type, soldierClass);
     const tint = (((color >> 16) + 255) >> 1) << 16 | (((color >> 8) & 0xff) + 255) >> 1 << 8 | ((color & 0xff) + 255) >> 1;
     const sprite = this.pool.acquire(x, y, key, id, tint);
     this.sprites.set(id, sprite);
@@ -274,7 +337,9 @@ export class EntityManager {
   destroyAll() {
     this.moving.clear();
     this.dots.clear();
+    this.arrows.length = 0;
     this.dotGraphics.destroy();
+    this.arrowGraphics.destroy();
     for (const sprite of this.sprites.values()) sprite.destroy();
     this.sprites.clear();
     this.pool.releaseAll();
@@ -282,6 +347,64 @@ export class EntityManager {
 
   getSprite(id: string): Phaser.GameObjects.Sprite | undefined {
     return this.sprites.get(id);
+  }
+
+  applyEffects(effects: Effect[], tickRateMs: number) {
+    for (const eff of effects) {
+      const fromX = eff.fromTileX * TILE_SIZE + TILE_SIZE / 2;
+      const fromY = eff.fromTileY * TILE_SIZE + TILE_SIZE / 2;
+      const toX = eff.toTileX * TILE_SIZE + TILE_SIZE / 2;
+      const toY = eff.toTileY * TILE_SIZE + TILE_SIZE / 2;
+      if (eff.type === 'arrow') {
+        this.arrows.push({
+          type: 'arrow',
+          fromX, fromY, toX, toY,
+          elapsed: 0,
+          duration: Math.min(tickRateMs, 500),
+          color: 0xffcc00,
+        });
+      } else if (eff.type === 'melee') {
+        this.arrows.push({
+          type: 'melee',
+          fromX, fromY, toX, toY,
+          elapsed: 0,
+          duration: Math.min(tickRateMs, 200),
+          color: 0xffffff,
+        });
+      }
+    }
+  }
+
+  private updateArrows() {
+    this.arrowGraphics.clear();
+    for (let i = this.arrows.length - 1; i >= 0; i--) {
+      const a = this.arrows[i];
+      a.elapsed += 16;
+      if (a.elapsed >= a.duration) {
+        this.arrows.splice(i, 1);
+        continue;
+      }
+      const t = a.elapsed / a.duration;
+      if (a.type === 'melee') {
+        const midX = (a.fromX + a.toX) / 2;
+        const midY = (a.fromY + a.toY) / 2;
+        const angle = Math.atan2(a.toY - a.fromY, a.toX - a.fromX);
+        const radius = Math.sqrt((a.toX - a.fromX) ** 2 + (a.toY - a.fromY) ** 2) / 2 * 0.7;
+        const alpha = 0.9 * (1 - t);
+        this.arrowGraphics.lineStyle(4, a.color, alpha);
+        this.arrowGraphics.beginPath();
+        this.arrowGraphics.arc(midX, midY, Math.max(radius, 4), angle - Math.PI / 3, angle + Math.PI / 3, false);
+        this.arrowGraphics.strokePath();
+      } else {
+        const x = a.fromX + (a.toX - a.fromX) * t;
+        const y = a.fromY + (a.toY - a.fromY) * t;
+        this.arrowGraphics.lineStyle(2, a.color, 0.9);
+        this.arrowGraphics.beginPath();
+        this.arrowGraphics.moveTo(a.fromX, a.fromY);
+        this.arrowGraphics.lineTo(x, y);
+        this.arrowGraphics.strokePath();
+      }
+    }
   }
 
   getEntityPosition(id: string): { x: number; y: number } | undefined {

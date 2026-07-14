@@ -2,14 +2,15 @@ import { randomUUID } from 'crypto';
 import { DIRS } from './algorithms/findPath';
 
 export type EntityType = 'soldier' | 'barracks';
+export type SoldierClass = 'soldier' | 'archer' | 'tank';
 
 export type EntityState =
   | { status: 'idle' }
   | { status: 'moving'; targetX: number; targetY: number }
   | { status: 'attacking'; targetX: number; targetY: number }
   | { status: 'building-barracks'; startedAtTick: number }
-  | { status: 'building'; startedAtTick: number }
-  | { status: 'ready'; lastProducedAtTick: number };
+  | { status: 'building'; startedAtTick: number; spawnClass?: SoldierClass }
+  | { status: 'ready'; lastProducedAtTick: number; spawnClass?: SoldierClass };
 
 export const STATUS_OVERRIDABLE: Record<string, boolean> = {
   'building-barracks': false,
@@ -35,6 +36,7 @@ export interface Entity {
   id: string;
   ownerId: string;
   type: EntityType;
+  class?: SoldierClass;
   x: number;
   y: number;
   state: EntityState;
@@ -44,25 +46,26 @@ export interface Entity {
   lockedTargetId?: string;
 }
 
-export function createSoldier(ownerId: string, x: number, y: number): Entity {
+export function createSoldier(ownerId: string, x: number, y: number, soldierClass?: SoldierClass): Entity {
   return {
     id: randomUUID(),
     ownerId,
     type: 'soldier',
+    class: soldierClass || 'soldier',
     x,
     y,
     state: { status: 'idle' },
   };
 }
 
-export function createBarracks(ownerId: string, x: number, y: number, tick: number): Entity {
+export function createBarracks(ownerId: string, x: number, y: number, tick: number, spawnClass?: SoldierClass): Entity {
   return {
     id: randomUUID(),
     ownerId,
     type: 'barracks',
     x,
     y,
-    state: { status: 'building', startedAtTick: tick },
+    state: { status: 'building', startedAtTick: tick, spawnClass: spawnClass || 'soldier' },
   };
 }
 

@@ -22,8 +22,8 @@ export type EntityState =
   | { status: 'moving'; targetX: number; targetY: number }
   | { status: 'attacking'; targetX: number; targetY: number }
   | { status: 'building-barracks'; startedAtTick: number }
-  | { status: 'building'; startedAtTick: number }
-  | { status: 'ready'; lastProducedAtTick: number };
+  | { status: 'building'; startedAtTick: number; spawnClass?: 'soldier' | 'archer' | 'tank' }
+  | { status: 'ready'; lastProducedAtTick: number; spawnClass?: 'soldier' | 'archer' | 'tank' };
 
 export const STATUS_OVERRIDABLE: Record<string, boolean> = {
   'building-barracks': false,
@@ -37,10 +37,21 @@ export interface Entity {
   id: string;
   ownerId: string;
   type: 'soldier' | 'barracks';
+  class?: 'soldier' | 'archer' | 'tank';
   x: number;
   y: number;
   state: EntityState;
   lastCommand?: string;
+}
+
+export interface Effect {
+  type: 'arrow' | 'melee';
+  fromId: string;
+  toId: string;
+  fromTileX: number;
+  fromTileY: number;
+  toTileX: number;
+  toTileY: number;
 }
 
 export interface GameState {
@@ -65,6 +76,7 @@ export interface GameState {
   winners: string[];
   losers: string[];
   createdAt: string;
+  effects?: Effect[];
 }
 
 export interface GameStateDiff {
@@ -73,6 +85,7 @@ export interface GameStateDiff {
   changed: [string, Entity][];
   removed: string[];
   tickCalcTime?: number;
+  effects?: Effect[];
 }
 
 export type StateUpdate = GameState | GameStateDiff;

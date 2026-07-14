@@ -28,3 +28,4 @@ export function processSoldiers(game: Game, config: GamemodeConfig, toRemove: st
     }
   }
 }
+

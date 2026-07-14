@@ -82,10 +82,12 @@ function tick(gameId: string) {
 
   const tickStart = performance.now();
   game.tick++;
+  game.effects = [];
   const actions = game.actionQueue.splice(0, game.actionQueue.length);
   processActions(game, actions);
   processGame(game);
   const tickCalcTime = Math.round(performance.now() - tickStart - game.tickRateMs);
+  const effects = game.consumeEffects();
 
   const config = GAMEMODE_CONFIGS[game.gamemode];
   let winners: string[] = [];
@@ -107,11 +109,11 @@ function tick(gameId: string) {
   }
 
   // Every tick: send diff (mutable objects -> JSON string to avoid structured clone)
-  parentPort?.postMessage({ type: 'stateDiff', gameId: game.id, diff: game.toDiffJSON(), tickCalcTime });
+  parentPort?.postMessage({ type: 'stateDiff', gameId: game.id, diff: game.toDiffJSON(), tickCalcTime, effects });
 
   // First 10 ticks + every 10th thereafter: send full state for client verification
   if (game.tick <= 10 || game.tick % 10 === 0) {
-    parentPort?.postMessage({ type: 'stateUpdate', gameId: game.id, state: game.toJSON(), tickCalcTime });
+    parentPort?.postMessage({ type: 'stateUpdate', gameId: game.id, state: game.toJSON(), tickCalcTime, effects });
   }
 }
 

@@ -72,6 +72,26 @@
     </div>
   }
 
+  @if (showBarracksDialog) {
+    <div class="barracks-dialog">
+      <div class="bd-title">Spawn Type</div>
+      <div class="bd-options">
+        <button class="bd-btn" [class.active]="selectedBarracksSpawn === 'soldier'" (click)="setBarracksSpawn('soldier')">
+          <span class="bd-icon">&#9733;</span>
+          Soldier
+        </button>
+        <button class="bd-btn" [class.active]="selectedBarracksSpawn === 'archer'" (click)="setBarracksSpawn('archer')">
+          <span class="bd-icon">&#9734;</span>
+          Archer
+        </button>
+        <button class="bd-btn" [class.active]="selectedBarracksSpawn === 'tank'" (click)="setBarracksSpawn('tank')">
+          <span class="bd-icon">&#9632;</span>
+          Tank
+        </button>
+      </div>
+    </div>
+  }
+
   <div class="cmd-bar">
     <div class="cmd-buttons">
       @if (selectedEntities.length > 0 || targetingMode) {
@@ -93,6 +113,24 @@
             <span class="keyhint">E</span>
             Build
           </button>
+          @if (hasFilterableSelection) {
+            <span class="filter-divider"></span>
+            <button class="fbtn" [class.active]="selectedClasses.length === 1 && selectedClasses[0] === 'soldier'" (click)="filterSelection('soldier')">
+              <span class="keyhint">1</span>
+              <span class="fbtn-dot dot-sq"></span>
+              Soldier
+            </button>
+            <button class="fbtn" [class.active]="selectedClasses.length === 1 && selectedClasses[0] === 'archer'" (click)="filterSelection('archer')">
+              <span class="keyhint">2</span>
+              <span class="fbtn-dot dot-ci"></span>
+              Archer
+            </button>
+            <button class="fbtn" [class.active]="selectedClasses.length === 1 && selectedClasses[0] === 'tank'" (click)="filterSelection('tank')">
+              <span class="keyhint">3</span>
+              <span class="fbtn-dot dot-sh"></span>
+              Tank
+            </button>
+          }
         }
       }
     </div>

@@ -34,6 +34,8 @@ export interface GamemodeConfig {
   soldierMoveRange: number;
   soldierAttackRange: number;
   soldierDetectRange: number;
+  archerAttackRange: number;
+  archerDetectRange: number;
   soldierAttackBarracksKillChance: number;
   peaceDurationMs: number;
   startingSoldiers: number;
@@ -61,6 +63,8 @@ export const GAMEMODE_CONFIGS: Record<string, GamemodeConfig> = {
     soldierMoveRange: 3,
     soldierAttackRange: 1,
     soldierDetectRange: 4,
+    archerAttackRange: 3,
+    archerDetectRange: 8,
     soldierAttackBarracksKillChance: 0.15,
     peaceDurationMs: 100000,
     startingSoldiers: 5,
@@ -81,6 +85,8 @@ export const GAMEMODE_CONFIGS: Record<string, GamemodeConfig> = {
     soldierMoveRange: 3,
     soldierAttackRange: 1,
     soldierDetectRange: 4,
+    archerAttackRange: 3,
+    archerDetectRange: 8,
     soldierAttackBarracksKillChance: 0.15,
     peaceDurationMs: 500000,
     startingSoldiers: 5,
@@ -101,6 +107,8 @@ export const GAMEMODE_CONFIGS: Record<string, GamemodeConfig> = {
     soldierMoveRange: 3,
     soldierAttackRange: 1,
     soldierDetectRange: 4,
+    archerAttackRange: 3,
+    archerDetectRange: 8,
     soldierAttackBarracksKillChance: 0.15,
     peaceDurationMs: 700000,
     startingSoldiers: 5,
@@ -121,6 +129,8 @@ export const GAMEMODE_CONFIGS: Record<string, GamemodeConfig> = {
     soldierMoveRange: 3,
     soldierAttackRange: 1,
     soldierDetectRange: 4,
+    archerAttackRange: 3,
+    archerDetectRange: 8,
     soldierAttackBarracksKillChance: 0.15,
     peaceDurationMs: 10000,
     startingSoldiers: 5,

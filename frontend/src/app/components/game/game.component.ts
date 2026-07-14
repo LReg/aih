@@ -37,6 +37,9 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   barracksCount = 0;
   soldierCount = 0;
   showSurrenderModal = false;
+  showBarracksDialog = false;
+  selectedBarracksId = '';
+  selectedBarracksSpawn = 'soldier';
   winners: string[] = [];
   isWinner = false;
   gameTick = 0;
@@ -92,6 +95,18 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     ).length;
   }
 
+  get selectedClasses(): string[] {
+    const classes = new Set<string>();
+    for (const e of this.selectedEntities) {
+      if (e.type === 'soldier') classes.add(e.class || 'soldier');
+    }
+    return [...classes];
+  }
+
+  get hasFilterableSelection(): boolean {
+    return this.selectedEntities.some(e => e.type === 'soldier') && this.selectedClasses.length > 1;
+  }
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -135,6 +150,24 @@ export class GameComponent implements AfterViewInit, OnDestroy {
       case 'e':
         if (this.targetingMode) this.cancelTargeting();
         else this.buildBarracks();
+        break;
+      case 'a':
+        if (!this.targetingMode) this.selectAll();
+        break;
+      case 'd':
+        if (!this.targetingMode) this.deselectAll();
+        break;
+      case 's':
+        if (!this.targetingMode) this.setIdle();
+        break;
+      case '1':
+        if (!this.targetingMode) this.filterSelection('soldier');
+        break;
+      case '2':
+        if (!this.targetingMode) this.filterSelection('archer');
+        break;
+      case '3':
+        if (!this.targetingMode) this.filterSelection('tank');
         break;
       case 'escape':
         if (this.targetingMode) this.cancelTargeting();
@@ -216,7 +249,10 @@ export class GameComponent implements AfterViewInit, OnDestroy {
       this.ngZone.run(() => this.submitAction(req));
     }));
     this.subs.push(this.gameScene.onTargetingChanged.subscribe(action => {
-      this.ngZone.run(() => { this.targetingMode = action; });
+      this.ngZone.run(() => {
+        this.targetingMode = action;
+        if (action) this.showBarracksDialog = false;
+      });
     }));
   }
 
@@ -298,6 +334,16 @@ export class GameComponent implements AfterViewInit, OnDestroy {
 
   private syncSelection(ids: string[]) {
     this.selectedEntities = ids.map(id => this.gameScene.getEntity(id)).filter(Boolean) as Entity[];
+    const onlyBarracks = this.selectedEntities.length === 1 && this.selectedEntities[0].type === 'barracks';
+    if (onlyBarracks && !this.showBarracksDialog) {
+      const b = this.selectedEntities[0];
+      this.selectedBarracksId = b.id;
+      this.selectedBarracksSpawn = (b.state as any).spawnClass || 'soldier';
+      this.showBarracksDialog = true;
+    } else if (!onlyBarracks) {
+      this.showBarracksDialog = false;
+      this.selectedBarracksId = '';
+    }
   }
 
   private submitAction(req: { action: string; entityIds: string[]; x: number; y: number }) {
@@ -325,6 +371,45 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     this.api.submitAction(this.gameId, 'build_barracks', {
       entityIds: this.selectedEntities.map(e => e.id),
     }).subscribe();
+  }
+
+  setBarracksSpawn(spawnClass: string) {
+    if (!this.selectedBarracksId) return;
+    this.api.submitAction(this.gameId, 'set_spawn_class', {
+      entityIds: [this.selectedBarracksId],
+      spawnClass,
+    }).subscribe();
+    this.selectedBarracksSpawn = spawnClass;
+    this.showBarracksDialog = false;
+  }
+
+  private selectAll() {
+    this.gameScene.selectAllEntities(this.userId);
+  }
+
+  private deselectAll() {
+    this.gameScene.cancelSelection();
+  }
+
+  private setIdle() {
+    if (this.selectedSoldiers === 0) return;
+    const soldierIds = this.selectedEntities.filter(e => e.type === 'soldier').map(e => e.id);
+    if (soldierIds.length === 0) return;
+    this.api.submitAction(this.gameId, 'set_idle', {
+      entityIds: soldierIds,
+    }).subscribe();
+    this.gameScene.cancelSelection();
+  }
+
+  filterSelection(filterClass: string) {
+    const filtered = this.selectedEntities.filter(
+      e => (e.class || 'soldier') === filterClass,
+    );
+    const ids = filtered.map(e => e.id);
+    if (ids.length === 0) return;
+    this.gameScene.selectedIds = new Set(ids);
+    this.gameScene.updateHighlights();
+    this.syncSelection(ids);
   }
 
   surrender() {

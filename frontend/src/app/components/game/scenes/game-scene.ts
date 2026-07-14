@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Subject } from 'rxjs';
-import { GameState, GameStateDiff, StateUpdate, TileType, TERRAIN_COLORS, Entity, isOverridable } from '../../../types/game.types';
+import { GameState, GameStateDiff, StateUpdate, TileType, TERRAIN_COLORS, Entity, isOverridable, Effect } from '../../../types/game.types';
 import { TILE_SIZE } from './texture-generator';
 import { EntityManager } from './entity-manager';
 import { OverlayRenderer } from './overlay-renderer';
@@ -81,6 +81,14 @@ export class GameScene extends Phaser.Scene {
     return this.entitiesMap.get(id);
   }
 
+  getAllPlayerEntityIds(playerId: string): string[] {
+    const ids: string[] = [];
+    for (const [id, e] of this.entitiesMap) {
+      if (e.ownerId === playerId) ids.push(id);
+    }
+    return ids;
+  }
+
   countPlayerBarracks(playerId: string): number {
     let count = 0;
     for (const entity of this.entitiesMap.values()) {
@@ -141,8 +149,10 @@ export class GameScene extends Phaser.Scene {
   updateFromState(update: StateUpdate) {
     if (!this.entityManager) return;
     perfStart('updateFromState');
+    let effects: Effect[] | undefined;
     if ('diff' in update && update.diff) {
       const diff = update as GameStateDiff;
+      effects = diff.effects;
       this.applyDiff(diff);
       if (this.gameState) {
         this.entityManager.reconcileIncremental(
@@ -151,13 +161,19 @@ export class GameScene extends Phaser.Scene {
         );
       }
     } else {
-      this.applyFull(update as GameState);
+      const state = update as GameState;
+      effects = state.effects;
+      this.applyFull(state);
       if (this.gameState) {
         this.entityManager.reconcileFull(
           this.entitiesMap,
           this.gameState.playerColors, this.gameState.tickRateMs,
         );
       }
+    }
+
+    if (effects && effects.length > 0) {
+      this.entityManager.applyEffects(effects, this.gameState?.tickRateMs || 500);
     }
 
     if (this.gameState) {
@@ -261,14 +277,15 @@ export class GameScene extends Phaser.Scene {
     const count = soldiers.length;
     if (count === 0) return [];
 
-    const isAvailable = this.targetingAction === 'attack'
-      ? (x: number, y: number) => {
-          const id = this.entitySpatialMap.get(`${x},${y}`);
-          if (!id) return true;
-          const e = this.entitiesMap.get(id);
-          return e !== undefined && e.ownerId !== this.playerId;
-        }
-      : (x: number, y: number) => !this.entitySpatialMap.has(`${x},${y}`);
+    const isAvailable = (x: number, y: number) => {
+      const id = this.entitySpatialMap.get(`${x},${y}`);
+      if (!id) return true;
+      const e = this.entitiesMap.get(id);
+      if (!e || e.ownerId === this.playerId) return false;
+      if (this.darknessRange > 0 && !this.fogVisibleIds.has(id)) return true;
+      if (this.targetingAction === 'walk') return false;
+      return true;
+    };
 
     return getSpreadPositions(tileX, tileY, count, isAvailable, this.gameState.map.width, this.gameState.map.height);
   }
@@ -284,6 +301,20 @@ export class GameScene extends Phaser.Scene {
         return;
       }
     }
+  }
+
+  updateHighlights() {
+    this.overlays.updateAll(this.entitiesMap, this.selectedIds, this.playerId);
+  }
+
+  selectAllEntities(playerId: string) {
+    const ids: string[] = [];
+    for (const [id, e] of this.entitiesMap) {
+      if (e.ownerId === playerId) ids.push(id);
+    }
+    this.selectedIds = new Set(ids);
+    this.updateHighlights();
+    this.onSelectionChanged.next(ids);
   }
 
   cancelSelection() {

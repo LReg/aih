@@ -77,7 +77,7 @@ function reconstructPath(
   return path;
 }
 
-const MAX_PATH_NODES = 500;
+const MAX_PATH_NODES = 5000;
 
 export function findPath(
   fromX: number,
@@ -108,9 +108,7 @@ export function findPath(
 
   while (open.size > 0) {
     if (++nodesExplored > MAX_PATH_NODES) {
-      const result = reconstructPath(cameFrom, key, bestNode.x, bestNode.y);
-      if (USE_PATH_CACHE && pathCache && result.length > 1) pathCache.store(toX, toY, result, maxW);
-      return result;
+      return reconstructPath(cameFrom, key, bestNode.x, bestNode.y);
     }
     const cur = open.pop()!;
     const curKey = key(cur.x, cur.y);
@@ -161,7 +159,5 @@ export function findPath(
     }
   }
 
-  const result = reconstructPath(cameFrom, key, bestNode.x, bestNode.y);
-  if (USE_PATH_CACHE && pathCache && result.length > 1) pathCache.store(toX, toY, result, maxW);
-  return result;
+  return reconstructPath(cameFrom, key, bestNode.x, bestNode.y);
 }

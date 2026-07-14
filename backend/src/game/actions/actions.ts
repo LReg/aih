@@ -4,6 +4,8 @@ import { Game, QueuedAction } from '../game';
 import { walkAction } from './walk.action';
 import { attackAction } from './attack.action';
 import { buildBarracksAction } from './build-barracks.action';
+import { setIdleAction } from './set-idle.action';
+import { setSpawnClassAction } from './set-spawn-class.action';
 import { surrenderAction } from './surrender.action';
 
 const logger = new Logger('Actions');
@@ -53,6 +55,8 @@ export function processActions(game: Game, actions: QueuedAction[]): void {
       case 'walk': walkAction(game, action); break;
       case 'attack': attackAction(game, action); break;
       case 'build_barracks': buildBarracksAction(game, action); break;
+      case 'set_idle': setIdleAction(game, action); break;
+      case 'set_spawn_class': setSpawnClassAction(game, action); break;
       case 'surrender': surrenderAction(game, action); break;
       default: logger.warn(`unknown action type: ${action.type}`);
     }

@@ -1,4 +1,4 @@
-import { Game } from '../../game';
+import { Game, Effect } from '../../game';
 import { Entity } from '../../game-map';
 import { GamemodeConfig } from '../../gamemode.config';
 import { isPeaceTime } from '../../algorithms/isPeaceTime';
@@ -22,6 +22,14 @@ function tryAdvanceAlongPath(game: Game, entity: Entity): boolean {
   return true;
 }
 
+function attackRange(entity: Entity, config: GamemodeConfig): number {
+  return entity.class === 'archer' ? config.archerAttackRange : config.soldierAttackRange;
+}
+
+function detectRange(entity: Entity, config: GamemodeConfig): number {
+  return entity.class === 'archer' ? config.archerDetectRange : config.soldierDetectRange;
+}
+
 export function processAttack(game: Game, entity: Entity, config: GamemodeConfig, toRemove: string[], pathCache: PathCache): void {
   if (isPeaceTime(game)) return;
 
@@ -31,10 +39,10 @@ export function processAttack(game: Game, entity: Entity, config: GamemodeConfig
   // Phase 1: locked target
   if (entity.lockedTargetId) {
     const target = game.map.entities.get(entity.lockedTargetId);
-    if (target && manhattan(entity, target) <= config.soldierDetectRange) {
-      if (manhattan(entity, target) <= config.soldierAttackRange) {
+    if (target && manhattan(entity, target) <= detectRange(entity, config)) {
+      if (manhattan(entity, target) <= attackRange(entity, config)) {
         entity.path = undefined;
-        const result = resolveEntityCombat(entity, target, config.soldierAttackBarracksKillChance);
+        const result = resolveEntityCombat(entity, target, config.soldierAttackBarracksKillChance, game.effects);
         if (result) toRemove.push(result.killed);
         return;
       }
@@ -47,11 +55,11 @@ export function processAttack(game: Game, entity: Entity, config: GamemodeConfig
   }
 
   // Phase 2: find new enemy
-  const nearest = findNearestEnemy(game, entity, config.soldierDetectRange);
+  const nearest = findNearestEnemy(game, entity, detectRange(entity, config));
   if (nearest) {
     entity.lockedTargetId = nearest.id;
-    if (manhattan(entity, nearest) <= config.soldierAttackRange) {
-      const result = resolveEntityCombat(entity, nearest, config.soldierAttackBarracksKillChance);
+    if (manhattan(entity, nearest) <= attackRange(entity, config)) {
+      const result = resolveEntityCombat(entity, nearest, config.soldierAttackBarracksKillChance, game.effects);
       if (result) toRemove.push(result.killed);
       return;
     }

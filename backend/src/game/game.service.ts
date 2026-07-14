@@ -36,6 +36,7 @@ export class GameService implements OnModuleDestroy {
           this.gameDao.saveGame(msg.state);
           const state = msg.state as any;
           state.tickCalcTime = msg.tickCalcTime;
+          state.effects = msg.effects || [];
           this.gameGateway.broadcastStateUpdate(state);
           this.adminStats.recordTick(msg.gameId, msg.tickCalcTime);
           break;
@@ -43,6 +44,7 @@ export class GameService implements OnModuleDestroy {
         case 'stateDiff': {
           const diff = msg.diff as any;
           diff.tickCalcTime = msg.tickCalcTime;
+          diff.effects = msg.effects || [];
           this.gameGateway.broadcastStateDiff(msg.gameId, diff);
           this.adminStats.recordTick(msg.gameId, msg.tickCalcTime);
           break;

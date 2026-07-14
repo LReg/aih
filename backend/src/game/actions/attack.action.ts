@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { Game, QueuedAction } from '../game';
 import { resolveEntities } from '../algorithms/resolveEntities';
-import { getSpreadPositions } from '../algorithms/getSpreadPositions';
+import { getSpreadPositions, assignTargetsByDistance } from '../algorithms/getSpreadPositions';
 import { isPeaceTime } from '../algorithms/isPeaceTime';
 import { isOverridable } from '../game-map';
 
@@ -27,11 +27,13 @@ export function attackAction(game: Game, action: QueuedAction): void {
     game.map.width, game.map.height,
   );
 
+  const order = assignTargetsByDistance(entities, targets);
+
   for (let i = 0; i < entities.length; i++) {
     const entity = entities[i];
     entity.lockedTargetId = undefined;
     entity.path = undefined;
-    const t = targets[i] || { x: payload.x, y: payload.y };
+    const t = targets[order[i]] || { x: payload.x, y: payload.y };
     entity.state = { status: 'attacking', targetX: t.x, targetY: t.y };
     game.map.markChanged(entity.id);
     entity.lastCommand = 'attack';

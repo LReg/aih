@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { Game, QueuedAction } from '../game';
 import { resolveEntities } from '../algorithms/resolveEntities';
-import { getSpreadPositions } from '../algorithms/getSpreadPositions';
+import { getSpreadPositions, assignTargetsByDistance } from '../algorithms/getSpreadPositions';
 import { isOverridable } from '../game-map';
 
 const logger = new Logger('WalkAction');
@@ -22,9 +22,11 @@ export function walkAction(game: Game, action: QueuedAction): void {
     game.map.width, game.map.height,
   );
 
+  const order = assignTargetsByDistance(entities, targets);
+
   for (let i = 0; i < entities.length; i++) {
     const e = entities[i];
-    const t = targets[i] || { x: payload.x, y: payload.y };
+    const t = targets[order[i]] || { x: payload.x, y: payload.y };
     e.state = { status: 'moving', targetX: t.x, targetY: t.y };
     game.map.markChanged(e.id);
     e.lastCommand = 'move';

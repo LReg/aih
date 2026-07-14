@@ -7,6 +7,8 @@ export class BootScene extends Phaser.Scene {
 
   preload() {
     this.load.image('soldiers', 'assets/soldiers.png');
+    this.load.image('archer', 'assets/archer.png');
+    this.load.image('tank', 'assets/tank.png');
     this.load.image('barracks', 'assets/barracks.png');
   }
 
