@@ -79,6 +79,8 @@ export class Game {
       y: e.y,
       state: e.state,
       lastCommand: e.lastCommand,
+      hp: e.hp,
+      maxHp: e.maxHp,
     };
   }
 

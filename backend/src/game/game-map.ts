@@ -44,17 +44,31 @@ export interface Entity {
   path?: { x: number; y: number }[];
   pathIndex?: number;
   lockedTargetId?: string;
+  hp: number;
+  maxHp: number;
 }
 
+export const CLASS_STATS: Record<string, { hp: number; damage: number }> = {
+  soldier: { hp: 100, damage: 25 },
+  archer: { hp: 75, damage: 20 },
+  tank: { hp: 250, damage: 15 },
+};
+
+const BARRACKS_HP = 500;
+
 export function createSoldier(ownerId: string, x: number, y: number, soldierClass?: SoldierClass): Entity {
+  const cls = soldierClass || 'soldier';
+  const stats = CLASS_STATS[cls] || CLASS_STATS.soldier;
   return {
     id: randomUUID(),
     ownerId,
     type: 'soldier',
-    class: soldierClass || 'soldier',
+    class: cls,
     x,
     y,
     state: { status: 'idle' },
+    hp: stats.hp,
+    maxHp: stats.hp,
   };
 }
 
@@ -66,6 +80,8 @@ export function createBarracks(ownerId: string, x: number, y: number, tick: numb
     x,
     y,
     state: { status: 'building', startedAtTick: tick, spawnClass: spawnClass || 'soldier' },
+    hp: BARRACKS_HP,
+    maxHp: BARRACKS_HP,
   };
 }
 

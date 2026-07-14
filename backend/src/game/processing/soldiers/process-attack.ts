@@ -1,4 +1,4 @@
-import { Game, Effect } from '../../game';
+import { Game } from '../../game';
 import { Entity } from '../../game-map';
 import { GamemodeConfig } from '../../gamemode.config';
 import { isPeaceTime } from '../../algorithms/isPeaceTime';
@@ -42,7 +42,9 @@ export function processAttack(game: Game, entity: Entity, config: GamemodeConfig
     if (target && manhattan(entity, target) <= detectRange(entity, config)) {
       if (manhattan(entity, target) <= attackRange(entity, config)) {
         entity.path = undefined;
-        const result = resolveEntityCombat(entity, target, config.soldierAttackBarracksKillChance, game.effects);
+        const result = resolveEntityCombat(entity, target, game.effects);
+        game.map.markChanged(entity.id);
+        game.map.markChanged(target.id);
         if (result) toRemove.push(result.killed);
         return;
       }
@@ -59,7 +61,9 @@ export function processAttack(game: Game, entity: Entity, config: GamemodeConfig
   if (nearest) {
     entity.lockedTargetId = nearest.id;
     if (manhattan(entity, nearest) <= attackRange(entity, config)) {
-      const result = resolveEntityCombat(entity, nearest, config.soldierAttackBarracksKillChance, game.effects);
+      const result = resolveEntityCombat(entity, nearest, game.effects);
+      game.map.markChanged(entity.id);
+      game.map.markChanged(nearest.id);
       if (result) toRemove.push(result.killed);
       return;
     }

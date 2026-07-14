@@ -44,11 +44,14 @@ export class EntityManager {
   private dotsDirty = false;
   private arrows: ArrowEffect[] = [];
   private arrowGraphics!: Phaser.GameObjects.Graphics;
+  private healthData = new Map<string, { hp: number; maxHp: number }>();
+  private healthbarGraphics!: Phaser.GameObjects.Graphics;
 
   constructor(private scene: Phaser.Scene) {
     this.pool = new SpritePool(scene);
     this.dotGraphics = scene.add.graphics().setDepth(2);
     this.arrowGraphics = scene.add.graphics().setDepth(3);
+    this.healthbarGraphics = scene.add.graphics().setDepth(5);
     this.usingDots = scene.cameras.main.zoom < ZOOM_DOT_THRESHOLD;
   }
 
@@ -94,6 +97,7 @@ export class EntityManager {
       const color = parseColor(playerColors[entity.ownerId]);
       const soldierClass = entity.class;
       this.upsertDot(id, x, y, entity.type, color, soldierClass);
+      this.healthData.set(id, { hp: entity.hp, maxHp: entity.maxHp });
 
       if (!this.usingDots) {
         const existing = this.sprites.get(id);
@@ -109,6 +113,7 @@ export class EntityManager {
     for (const [id, sprite] of this.sprites) {
       if (!entities.has(id)) {
         this.moving.delete(id);
+        this.healthData.delete(id);
         if (this.dots.delete(id)) this.dotsDirty = true;
         this.pool.release(sprite);
         this.sprites.delete(id);
@@ -125,6 +130,7 @@ export class EntityManager {
       const color = parseColor(playerColors[entity.ownerId]);
       const soldierClass = entity.class;
       this.upsertDot(id, x, y, entity.type, color, soldierClass);
+      this.healthData.set(id, { hp: entity.hp, maxHp: entity.maxHp });
 
       if (!this.usingDots) {
         const existing = this.sprites.get(id);
@@ -139,6 +145,7 @@ export class EntityManager {
     }
     for (const id of removed) {
       this.moving.delete(id);
+      this.healthData.delete(id);
       if (this.dots.delete(id)) this.dotsDirty = true;
       const sprite = this.sprites.get(id);
       if (sprite) {
@@ -164,6 +171,7 @@ export class EntityManager {
     }
 
     this.updateArrows();
+    this.renderHealthbars();
 
     if (this.moving.size > MAX_ANIMATED) {
       for (const [id, m] of this.moving) {
@@ -206,6 +214,7 @@ export class EntityManager {
     if (zoom < ZOOM_DOT_THRESHOLD && !this.usingDots) {
       this.usingDots = true;
       this.moving.clear();
+      this.healthbarGraphics.clear();
       for (const sprite of this.sprites.values()) sprite.destroy();
       this.sprites.clear();
       this.pool.releaseAll();
@@ -216,6 +225,7 @@ export class EntityManager {
     } else if (zoom >= ZOOM_DOT_THRESHOLD && this.usingDots) {
       this.usingDots = false;
       this.dotGraphics.clear();
+      this.healthbarGraphics.clear();
       for (const [id, d] of this.dots) {
         if (!this.wasFogged(id)) {
           this.createSprite(id, d.x, d.y, d.type, d.color, d.soldierClass);
@@ -337,9 +347,11 @@ export class EntityManager {
   destroyAll() {
     this.moving.clear();
     this.dots.clear();
+    this.healthData.clear();
     this.arrows.length = 0;
     this.dotGraphics.destroy();
     this.arrowGraphics.destroy();
+    this.healthbarGraphics.destroy();
     for (const sprite of this.sprites.values()) sprite.destroy();
     this.sprites.clear();
     this.pool.releaseAll();
@@ -372,6 +384,25 @@ export class EntityManager {
           color: 0xffffff,
         });
       }
+    }
+  }
+
+  private renderHealthbars() {
+    this.healthbarGraphics.clear();
+    for (const [id, h] of this.healthData) {
+      if (h.hp >= h.maxHp) continue;
+      const sprite = this.sprites.get(id);
+      if (!sprite || !sprite.visible) continue;
+      const barW = 24;
+      const barH = 3;
+      const x = sprite.x - barW / 2;
+      const y = sprite.y - TILE_SIZE / 2 - 6;
+      const pct = h.hp / h.maxHp;
+      this.healthbarGraphics.fillStyle(0x333333, 0.8);
+      this.healthbarGraphics.fillRect(x, y, barW, barH);
+      const color = pct > 0.5 ? 0x22cc22 : pct > 0.25 ? 0xcccc22 : 0xcc2222;
+      this.healthbarGraphics.fillStyle(color, 1);
+      this.healthbarGraphics.fillRect(x, y, barW * pct, barH);
     }
   }
 

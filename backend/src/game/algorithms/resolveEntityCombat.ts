@@ -1,52 +1,18 @@
 import { Logger } from '@nestjs/common';
-import { Entity } from '../game-map';
+import { Entity, CLASS_STATS } from '../game-map';
 import type { Effect } from '../game';
 
 const logger = new Logger('ResolveEntityCombat');
 
-interface CombatOdds {
-  kills: number;
-  dies: number;
-}
-
-const COMBAT_TABLE: Record<string, Record<string, CombatOdds>> = {
-  soldier: {
-    soldier: { kills: 0.3, dies: 0.3 },
-    archer: { kills: 0.4, dies: 0.125 },
-    tank: { kills: 0.05, dies: 0.05 }
-  },
-  archer: {
-    soldier: { kills: 0.20, dies: 0 },
-    tank: { kills: 0.05, dies: 0 },
-    archer: { kills: 0.30, dies: 0 },
-  },
-  tank: {
-    soldier: { kills: 0.05, dies: 0.05 },
-    archer: { kills: 0.15, dies: 0.05 },
-    tank: { kills: 0.05, dies: 0.05 },
-  },
-};
-
-function getOdds(e: Entity, t: Entity): CombatOdds {
-  const eClass = (e.class as string) || 'soldier';
-  const tClass = (t.class as string) || 'soldier';
-  return COMBAT_TABLE[eClass]?.[tClass] ?? { kills: 0.5, dies: 0.5 };
-}
-
 export function resolveEntityCombat(
   entity: Entity,
   target: Entity,
-  barracksKillChance: number,
   effects: Effect[],
 ): { killed: string } | null {
-  if (target.type === 'barracks') {
-    if (Math.random() < barracksKillChance) {
-      logger.log(`combat: entity=${entity.id} destroyed barracks=${target.id}`);
-      return { killed: target.id };
-    }
-    logger.log(`combat: entity=${entity.id} failed to destroy barracks=${target.id}`);
-    return null;
-  }
+  const eClass = (entity.class as string) || 'soldier';
+  const tClass = (target.class as string) || 'soldier';
+  const eDmg = CLASS_STATS[eClass]?.damage ?? 25;
+  const tDmg = CLASS_STATS[tClass]?.damage ?? 25;
 
   if ((entity.class as string) === 'archer') {
     effects.push({ type: 'arrow', fromId: entity.id, toId: target.id, fromTileX: entity.x, fromTileY: entity.y, toTileX: target.x, toTileY: target.y });
@@ -54,25 +20,33 @@ export function resolveEntityCombat(
     effects.push({ type: 'melee', fromId: entity.id, toId: target.id, fromTileX: entity.x, fromTileY: entity.y, toTileX: target.x, toTileY: target.y });
   }
 
-  const odds = getOdds(entity, target);
-  const roll = Math.random();
-  const total = odds.kills + odds.dies;
+  target.hp = Math.max(0, target.hp - eDmg);
+  logger.log(`combat: entity=${entity.id} (${eClass}) dealt ${eDmg} dmg to target=${target.id} (${tClass}) hp=${target.hp}/${target.maxHp}`);
 
-  if (roll < odds.kills) {
-    logger.log(`combat: entity=${entity.id} (${entity.class || 'soldier'}) killed target=${target.id} (${target.class || 'soldier'})`);
+  if (target.type === 'barracks' && target.hp <= 0) {
+    logger.log(`combat: entity=${entity.id} destroyed barracks=${target.id}`);
     return { killed: target.id };
   }
 
-  if (total > 0 && roll < total) {
-    if ((target.class as string) === 'archer') {
-      effects.push({ type: 'arrow', fromId: target.id, toId: entity.id, fromTileX: target.x, fromTileY: target.y, toTileX: entity.x, toTileY: entity.y });
-    } else {
-      effects.push({ type: 'melee', fromId: target.id, toId: entity.id, fromTileX: target.x, fromTileY: target.y, toTileX: entity.x, toTileY: entity.y });
-    }
-    logger.log(`combat: entity=${entity.id} (${entity.class || 'soldier'}) killed by target=${target.id} (${target.class || 'soldier'})`);
-    return { killed: entity.id };
+  if (target.hp <= 0) {
+    logger.log(`combat: entity=${entity.id} (${eClass}) killed target=${target.id} (${tClass})`);
+    return { killed: target.id };
   }
 
-  logger.log(`combat: entity=${entity.id} (${entity.class || 'soldier'}) standoff vs target=${target.id} (${target.class || 'soldier'})`);
+  const canRetaliate = eClass !== 'archer' && tClass !== 'archer';
+  if (canRetaliate) {
+    entity.hp = Math.max(0, entity.hp - tDmg);
+    logger.log(`combat: target=${target.id} (${tClass}) retaliated ${tDmg} dmg to entity=${entity.id} (${eClass}) hp=${entity.hp}/${entity.maxHp}`);
+    if (entity.hp <= 0) {
+      if ((target.class as string) === 'archer') {
+        effects.push({ type: 'arrow', fromId: target.id, toId: entity.id, fromTileX: target.x, fromTileY: target.y, toTileX: entity.x, toTileY: entity.y });
+      } else {
+        effects.push({ type: 'melee', fromId: target.id, toId: entity.id, fromTileX: target.x, fromTileY: target.y, toTileX: entity.x, toTileY: entity.y });
+      }
+      logger.log(`combat: entity=${entity.id} (${eClass}) killed by target retaliation`);
+      return { killed: entity.id };
+    }
+  }
+
   return null;
 }

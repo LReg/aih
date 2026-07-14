@@ -42,6 +42,8 @@ export interface Entity {
   y: number;
   state: EntityState;
   lastCommand?: string;
+  hp: number;
+  maxHp: number;
 }
 
 export interface Effect {
