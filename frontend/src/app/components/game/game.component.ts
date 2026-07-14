@@ -335,7 +335,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   private syncSelection(ids: string[]) {
     this.selectedEntities = ids.map(id => this.gameScene.getEntity(id)).filter(Boolean) as Entity[];
     const onlyBarracks = this.selectedEntities.length === 1 && this.selectedEntities[0].type === 'barracks';
-    if (onlyBarracks && !this.showBarracksDialog) {
+    if (onlyBarracks) {
       const b = this.selectedEntities[0];
       this.selectedBarracksId = b.id;
       this.selectedBarracksSpawn = (b.state as any).spawnClass || 'soldier';
