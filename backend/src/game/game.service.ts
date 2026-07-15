@@ -29,7 +29,7 @@ export class GameService implements OnModuleDestroy {
         case 'gameStart': {
           this.gameDao.saveGame(msg.state);
           this.gameGateway.broadcastGameStart(msg);
-          this.adminStats.recordGameStart(msg.gameId, msg.gamemode);
+          this.adminStats.recordGameStart(msg.gameId, msg.gamemode, msg.players, msg.state?.tickRateMs ?? 500);
           break;
         }
         case 'stateUpdate': {
@@ -53,7 +53,7 @@ export class GameService implements OnModuleDestroy {
           this.gameDao.saveGame(msg.state);
           this.gameGateway.broadcastGameEnd(msg);
           this.gameGateway.broadcastStateUpdate(msg.state);
-          this.adminStats.recordGameEnd(msg.gameId, msg.state?.tick || 0);
+          this.adminStats.recordGameEnd(msg.gameId, msg.state?.tick || 0, msg.winners || []);
           break;
         }
         case 'actionResult': {

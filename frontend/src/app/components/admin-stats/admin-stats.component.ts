@@ -8,10 +8,25 @@ import { NgClass } from '@angular/common';
 
 interface TickStats {
   avg: number; min: number; max: number; count: number;
+  avgUtil: number; minUtil: number; maxUtil: number; tickRateMs: number;
+}
+
+interface GameDetail {
+  gameId: string;
+  gamemode: string;
+  startedAt: string;
+  endedAt: string | null;
+  finalTick: number | null;
+  players: string[];
+  winners: string[];
+  tickRateMs: number;
 }
 
 interface AdminStats {
-  games: { totalCreated: number; running: number; finished: number };
+  games: {
+    totalCreated: number; running: number; finished: number;
+    details: GameDetail[];
+  };
   lobbies: { active: number; totalCreated: number };
   queues: Record<string, number>;
   tickDiff: {
@@ -63,7 +78,6 @@ interface AdminStats {
         </main>
       } @else if (stats) {
         <main class="dashboard">
-          <!-- Summary row -->
           <div class="summary-row">
             <div class="stat-card">
               <span class="stat-value">{{ stats.games.totalCreated }}</span>
@@ -83,7 +97,6 @@ interface AdminStats {
             </div>
           </div>
 
-          <!-- Health row -->
           <section class="section">
             <h3 class="section-title">Game Health</h3>
             @if (gameHealthRows.length > 0) {
@@ -93,9 +106,7 @@ interface AdminStats {
                     <tr>
                       <th>Game ID</th>
                       <th>Ticks</th>
-                      <th>Avg (ms)</th>
-                      <th>Min</th>
-                      <th>Max</th>
+                      <th>Util</th>
                       <th>Status</th>
                     </tr>
                   </thead>
@@ -104,12 +115,13 @@ interface AdminStats {
                       <tr>
                         <td class="mono">{{ shortId(entry.id) }}...</td>
                         <td class="mono">{{ entry.stats.count }}</td>
-                        <td class="mono" [ngClass]="tickClass(entry.stats.avg)">{{ entry.stats.avg }}</td>
-                        <td class="mono">{{ entry.stats.min }}</td>
-                        <td class="mono">{{ entry.stats.max }}</td>
+                        <td class="mono" [ngClass]="utilClass(entry.stats.avgUtil)">
+                          {{ entry.stats.avgUtil }}%
+                          <span class="raw-hint">({{ entry.stats.avg }}ms / {{ entry.stats.tickRateMs }}ms tick)</span>
+                        </td>
                         <td>
-                          <span class="badge" [ngClass]="entry.stats.avg > 0 ? 'badge-warn' : 'badge-ok'">
-                            {{ entry.stats.avg > 0 ? 'LAGGING' : 'OK' }}
+                          <span class="badge" [ngClass]="entry.stats.avgUtil > 100 ? 'badge-warn' : 'badge-ok'">
+                            {{ entry.stats.avgUtil > 100 ? 'LAGGING' : 'OK' }}
                           </span>
                         </td>
                       </tr>
@@ -122,23 +134,19 @@ interface AdminStats {
             }
           </section>
 
-          <!-- Tick diff overall -->
           <section class="section">
             <h3 class="section-title">Tick Diff Summary</h3>
             @if (stats.tickDiff.overall) {
               <div class="diff-summary">
                 <div class="diff-bar-wrap">
-                  <div class="diff-bar-label">All games avg: <strong class="mono">{{ stats.tickDiff.overall.avg }}ms</strong></div>
+                  <div class="diff-bar-label">Avg tick util: <strong class="mono" [ngClass]="utilClass(stats.tickDiff.overall.avgUtil)">{{ stats.tickDiff.overall.avgUtil }}%</strong></div>
                   <div class="diff-track">
-                    <div class="diff-fill" [style.width.%]="tickBarPct()" [ngClass]="stats.tickDiff.overall.avg > 0 ? 'fill-warn' : 'fill-ok'"></div>
+                    <div class="diff-fill" [style.width.%]="utilBarPct()" [ngClass]="stats.tickDiff.overall.avgUtil > 100 ? 'fill-warn' : 'fill-ok'"></div>
                   </div>
                 </div>
                 <div class="diff-range">
-                  <span class="mono">{{ stats.tickDiff.overall.min }}</span>
-                  <span class="dim">min</span>
-                  <span class="sep">|</span>
-                  <span class="mono">{{ stats.tickDiff.overall.max }}</span>
-                  <span class="dim">max</span>
+                  <span class="mono">{{ stats.tickDiff.overall.avg }}ms</span>
+                  <span class="dim">avg</span>
                   <span class="sep">|</span>
                   <span class="mono">{{ stats.tickDiff.overall.count }}</span>
                   <span class="dim">samples</span>
@@ -149,7 +157,46 @@ interface AdminStats {
             }
           </section>
 
-          <!-- Queues + Lobbies -->
+          <section class="section">
+            <h3 class="section-title">Finished Games</h3>
+            @if (finishedGameRows.length > 0) {
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Game</th>
+                      <th>Mode</th>
+                      <th>Players</th>
+                      <th>Winner</th>
+                      <th>Ticks</th>
+                      <th>Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (g of finishedGameRows; track g.gameId) {
+                      <tr>
+                        <td class="mono">{{ shortId(g.gameId) }}...</td>
+                        <td>{{ g.gamemode }}</td>
+                        <td class="players-cell">{{ g.players.join(', ') }}</td>
+                        <td>
+                          @if (g.winners.length > 0) {
+                            <span class="winner-text">{{ g.winners.join(', ') }}</span>
+                          } @else {
+                            <span class="dim">—</span>
+                          }
+                        </td>
+                        <td class="mono">{{ g.finalTick ?? '—' }}</td>
+                        <td class="mono">{{ g.tickRateMs }}ms</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <p class="dim">No finished games yet</p>
+            }
+          </section>
+
           <div class="split-row">
             <section class="section">
               <h3 class="section-title">Queues</h3>
@@ -197,7 +244,6 @@ interface AdminStats {
     .topbar-btn:hover { color: var(--accent); border-color: var(--accent); }
     .topbar-btn:disabled { opacity: .3; }
 
-    /* Login */
     .login-card { max-width: 340px; margin: 80px auto; display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 40px 24px; background: var(--card); border-radius: 12px; border: 1px solid var(--border); }
     .lock-icon { font-size: 36px; margin-bottom: 4px; }
     .login-card h2 { margin: 0; font-size: 20px; font-weight: 600; }
@@ -208,13 +254,11 @@ interface AdminStats {
     .login-btn:not(:disabled):hover { opacity: .85; }
     .error-msg { color: var(--danger); font-size: 13px; margin: 0; }
 
-    /* Loading */
     .loading-state { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 80px 0; }
     .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .loading-state p { color: var(--dim); margin: 0; }
 
-    /* Dashboard */
     .dashboard { padding-bottom: 48px; }
     .summary-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
     .stat-card { display: flex; flex-direction: column; gap: 4px; padding: 20px 16px; background: var(--card); border-radius: 10px; border: 1px solid var(--border); }
@@ -226,7 +270,6 @@ interface AdminStats {
     .split-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
     @media (max-width: 600px) { .split-row { grid-template-columns: 1fr; } }
 
-    /* Table */
     .table-wrap { overflow-x: auto; }
     .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .data-table th { text-align: left; padding: 8px 12px; color: var(--dim); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--border); white-space: nowrap; }
@@ -234,13 +277,14 @@ interface AdminStats {
     .data-table tr:last-child td { border-bottom: none; }
     .data-table tr:hover td { background: rgba(255,255,255,.03); }
     .mono { font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; font-size: 12px; }
+    .raw-hint { font-size: 10px; color: var(--dim); margin-left: 4px; }
+    .players-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+    .winner-text { color: var(--ok); font-weight: 600; }
 
-    /* Badges */
     .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; letter-spacing: .04em; }
     .badge-ok { background: rgba(34,197,94,.15); color: var(--ok); }
     .badge-warn { background: rgba(245,158,11,.15); color: var(--warn); }
 
-    /* Tick bar */
     .diff-summary { display: flex; flex-direction: column; gap: 10px; }
     .diff-bar-wrap { display: flex; flex-direction: column; gap: 6px; }
     .diff-bar-label { font-size: 13px; }
@@ -252,19 +296,16 @@ interface AdminStats {
     .dim { color: var(--dim); }
     .sep { color: var(--border); }
 
-    /* Queue list */
     .queue-list { display: flex; flex-direction: column; gap: 8px; }
     .queue-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
     .queue-row:last-child { border-bottom: none; }
     .queue-name { font-size: 14px; text-transform: capitalize; }
     .queue-count { font-size: 18px; font-weight: 700; }
 
-    /* Lobby stats */
     .lobby-stats { display: flex; flex-direction: column; gap: 8px; }
     .lobby-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
     .lobby-row:last-child { border-bottom: none; }
 
-    /* Tick color classes */
     .tick-ok { color: var(--ok); }
     .tick-warn { color: var(--warn); }
     .tick-danger { color: var(--danger); }
@@ -292,6 +333,13 @@ export class AdminStatsComponent implements OnDestroy {
       .sort((a, b) => b.stats.count - a.stats.count);
   }
 
+  get finishedGameRows(): GameDetail[] {
+    if (!this.stats) return [];
+    return this.stats.games.details
+      .filter(g => g.endedAt)
+      .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
+  }
+
   get queueEntries(): { name: string; count: number }[] {
     if (!this.stats) return [];
     return Object.entries(this.stats.queues)
@@ -301,18 +349,15 @@ export class AdminStatsComponent implements OnDestroy {
 
   shortId(id: string): string { return id.slice(0, 8); }
 
-  tickClass(val: number): string {
-    if (val <= 0) return 'tick-ok';
-    if (val <= 10) return 'tick-warn';
+  utilClass(util: number): string {
+    if (util <= 80) return 'tick-ok';
+    if (util <= 100) return 'tick-warn';
     return 'tick-danger';
   }
 
-  tickBarPct(): number {
-    if (!this.stats?.tickDiff.overall) return 50;
-    const v = this.stats.tickDiff.overall.avg;
-    // map from -20..+20 to 0..100%, center at 50%
-    const pct = 50 + (v / 20) * 50;
-    return Math.max(2, Math.min(100, pct));
+  utilBarPct(): number {
+    if (!this.stats?.tickDiff.overall) return 10;
+    return Math.max(2, Math.min(100, this.stats.tickDiff.overall.avgUtil));
   }
 
   login() {

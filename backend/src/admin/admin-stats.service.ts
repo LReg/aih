@@ -24,6 +24,9 @@ interface LifecycleDoc {
   startedAt: Date;
   endedAt?: Date;
   finalTick?: number;
+  players: string[];
+  winners: string[];
+  tickRateMs: number;
 }
 
 @Injectable()
@@ -53,22 +56,22 @@ export class AdminStatsService {
     }
   }
 
-  async recordGameStart(gameId: string, gamemode: string) {
+  async recordGameStart(gameId: string, gamemode: string, players: string[], tickRateMs: number) {
     await this.init();
     if (!this.initialized) return;
     await this.exec('recordGameStart', () => Promise.all([
       this.db.db.collection<CountersDoc>('admin_stats').updateOne({ _id: 'counters' }, { $inc: { totalGamesCreated: 1 } }),
-      this.db.db.collection<LifecycleDoc>('admin_game_lifecycle').insertOne({ gameId, gamemode, startedAt: new Date() }),
+      this.db.db.collection<LifecycleDoc>('admin_game_lifecycle').insertOne({ gameId, gamemode, startedAt: new Date(), players, winners: [], tickRateMs }),
     ]));
     this.logger.log(`game start: ${gameId} (${gamemode})`);
   }
 
-  async recordGameEnd(gameId: string, finalTick: number) {
+  async recordGameEnd(gameId: string, finalTick: number, winners: string[]) {
     await this.init();
     if (!this.initialized) return;
     await this.exec('recordGameEnd', () => Promise.all([
       this.db.db.collection<CountersDoc>('admin_stats').updateOne({ _id: 'counters' }, { $inc: { finishedGames: 1 } }),
-      this.db.db.collection<LifecycleDoc>('admin_game_lifecycle').updateOne({ gameId }, { $set: { endedAt: new Date(), finalTick } }),
+      this.db.db.collection<LifecycleDoc>('admin_game_lifecycle').updateOne({ gameId }, { $set: { endedAt: new Date(), finalTick, winners } }),
     ]));
     this.logger.log(`game end: ${gameId} tick=${finalTick}`);
   }
@@ -119,30 +122,53 @@ export class AdminStatsService {
     }
   }
 
+  private calcUtil(avg: number, tickRateMs: number): number {
+    return Math.max(0, Math.round(((tickRateMs + avg) / tickRateMs) * 100));
+  }
+
   async getStats(lobbyCount: number, queueCounts: Record<string, number>) {
     let allTickDocs: any[] = [];
+    let lifecycleDocs: LifecycleDoc[] = [];
     try {
-      allTickDocs = await this.db.db.collection<TickDoc>('admin_tick_stats').find().toArray();
+      [allTickDocs, lifecycleDocs] = await Promise.all([
+        this.db.db.collection<TickDoc>('admin_tick_stats').find().toArray(),
+        this.db.db.collection<LifecycleDoc>('admin_game_lifecycle').find().sort({ startedAt: -1 }).toArray(),
+      ]);
     } catch {}
     const counters = await this.getCounters();
     const running = await this.getRunningCount();
 
-    const byGame: Record<string, { avg: number; min: number; max: number; count: number }> = {};
+    const lifecycleByGameId = new Map(lifecycleDocs.map(d => [d.gameId, d]));
+
+    const byGame: Record<string, { avg: number; min: number; max: number; count: number; avgUtil: number; minUtil: number; maxUtil: number; tickRateMs: number }> = {};
     let overallSum = 0;
     let overallCount = 0;
     let overallMin = Infinity;
     let overallMax = -Infinity;
+    let overallSumUtil = 0;
+    let overallCountUtil = 0;
+    let overallMinUtil = Infinity;
+    let overallMaxUtil = -Infinity;
     const lagging: string[] = [];
     const healthy: string[] = [];
 
     for (const doc of allTickDocs) {
       const avg = Math.round(doc.sum / doc.count);
-      byGame[doc.gameId] = { avg, min: doc.min, max: doc.max, count: doc.count };
+      const lifecycle = lifecycleByGameId.get(doc.gameId);
+      const tickRateMs = lifecycle?.tickRateMs ?? 500;
+      const avgUtil = this.calcUtil(avg, tickRateMs);
+      const minUtil = this.calcUtil(doc.min, tickRateMs);
+      const maxUtil = this.calcUtil(doc.max, tickRateMs);
+      byGame[doc.gameId] = { avg, min: doc.min, max: doc.max, count: doc.count, avgUtil, minUtil, maxUtil, tickRateMs };
       overallSum += doc.sum;
       overallCount += doc.count;
       if (doc.min < overallMin) overallMin = doc.min;
       if (doc.max > overallMax) overallMax = doc.max;
-      if (avg > 0) lagging.push(doc.gameId);
+      overallSumUtil += avgUtil;
+      overallCountUtil++;
+      if (avgUtil < overallMinUtil) overallMinUtil = avgUtil;
+      if (avgUtil > overallMaxUtil) overallMaxUtil = avgUtil;
+      if (avgUtil > 100) lagging.push(doc.gameId);
       else healthy.push(doc.gameId);
     }
 
@@ -151,6 +177,16 @@ export class AdminStatsService {
         totalCreated: counters.totalGamesCreated,
         running,
         finished: counters.finishedGames,
+        details: lifecycleDocs.map(d => ({
+          gameId: d.gameId,
+          gamemode: d.gamemode,
+          startedAt: d.startedAt,
+          endedAt: d.endedAt ?? null,
+          finalTick: d.finalTick ?? null,
+          players: d.players,
+          winners: d.winners,
+          tickRateMs: d.tickRateMs,
+        })),
       },
       lobbies: {
         active: lobbyCount,
@@ -160,7 +196,15 @@ export class AdminStatsService {
       tickDiff: {
         byGame,
         overall: overallCount > 0
-          ? { avg: Math.round(overallSum / overallCount), min: overallMin, max: overallMax, count: overallCount }
+          ? {
+              avg: Math.round(overallSum / overallCount),
+              min: overallMin,
+              max: overallMax,
+              count: overallCount,
+              avgUtil: overallCountUtil > 0 ? Math.round(overallSumUtil / overallCountUtil) : 0,
+              minUtil: overallMinUtil === Infinity ? 0 : overallMinUtil,
+              maxUtil: overallMaxUtil === -Infinity ? 0 : overallMaxUtil,
+            }
           : null,
       },
       health: {
