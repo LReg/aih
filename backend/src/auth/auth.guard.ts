@@ -8,14 +8,18 @@ import {
 } from '@nestjs/common';
 import axios from 'axios';
 import { DatabaseService } from '../database/database.service';
+import { LldapService } from './lldap.service';
 import { User, Role } from '../types/User';
-import { upsertUser, upsertUserLocal, getUserRole, setUserRole } from '../dao/UserDao';
+import { upsertUser, upsertUserLocal, getUserRole, setUserRole, getUserById } from '../dao/UserDao';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
   private readonly logger = new Logger(AuthGuard.name);
 
-  constructor(private db: DatabaseService) {}
+  constructor(
+    private db: DatabaseService,
+    private lldap: LldapService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     if (context.getType() !== 'http') {
@@ -116,8 +120,34 @@ export class AuthGuard implements CanActivate {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (response.status !== 200) return null;
-    response.data.preferredUsername = response.data.preferred_username;
-    response.data.userId = response.data.sub;
-    return response.data as User;
+    const data = response.data as Record<string, unknown>;
+    data.preferredUsername = data.preferred_username;
+    data.userId = data.sub;
+
+    const oidcPreferredUsername = (data.preferred_username || '') as string;
+    const userId = (data.sub || '') as string;
+
+    // Check MongoDB for stored display name (from previous resolution)
+    if (userId) {
+      try {
+        const stored = await getUserById(this.db.db, userId);
+        if (stored?.preferredUsername && !stored.preferredUsername.includes('@')) {
+          data.preferredUsername = stored.preferredUsername;
+          return data as unknown as User;
+        }
+      } catch { /* continue */ }
+    }
+
+    // Otherwise resolve from LLDAP displayName
+    if (this.lldap.isEnabled && oidcPreferredUsername) {
+      try {
+        const lldapUser = await this.lldap.getUser(oidcPreferredUsername);
+        if (lldapUser?.displayName) {
+          data.preferredUsername = lldapUser.displayName;
+        }
+      } catch { /* use OIDC value */ }
+    }
+
+    return data as unknown as User;
   }
 }

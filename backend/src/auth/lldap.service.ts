@@ -125,6 +125,28 @@ export class LldapService implements OnModuleInit {
     return data.createUser;
   }
 
+  async getUser(userId: string): Promise<LldapUser | null> {
+    const query = `
+      query GetUser($userId: String!) {
+        user(userId: $userId) {
+          id
+          email
+          displayName
+          firstName
+          lastName
+          uuid
+          creationDate
+        }
+      }
+    `;
+    try {
+      const data = await this.graphql<{ user: LldapUser | null }>(query, { userId });
+      return data.user ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   async setPassword(userId: string, password: string): Promise<void> {
     const client = new Client({
       url: `ldap://${this.ldapHost}`,
