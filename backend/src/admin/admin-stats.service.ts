@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
+import { getUsersByIds } from '../dao/UserDao';
 
 interface TickDoc {
   _id?: string;
@@ -171,6 +172,13 @@ export class AdminStatsService {
       else healthy.push(doc.gameId);
     }
 
+    const allUserIds = [...new Set(lifecycleDocs.flatMap(d => [...d.players, ...d.winners]))];
+    let userNames: Record<string, string> = {};
+    try {
+      const users = await getUsersByIds(this.db.db, allUserIds);
+      for (const u of users) { if (u.userId) userNames[u.userId] = u.preferredUsername || u.userId; }
+    } catch { /* use IDs as fallback */ }
+
     return {
       games: {
         totalCreated: counters.totalGamesCreated,
@@ -184,6 +192,7 @@ export class AdminStatsService {
           finalTick: d.finalTick ?? null,
           players: d.players,
           winners: d.winners,
+          playerNames: userNames,
           tickRateMs: d.tickRateMs,
         })),
       },

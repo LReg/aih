@@ -24,6 +24,8 @@ export class OverlayRenderer {
   setLod(v: boolean) {
     this.lod = v;
     if (v) {
+      this.busyIds.clear();
+      this.attackIds.clear();
       this.busyGraphics.clear();
       this.attackEyeGraphics.clear();
       this.highlightGraphics.clear();

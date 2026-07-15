@@ -19,6 +19,7 @@ interface GameDetail {
   finalTick: number | null;
   players: string[];
   winners: string[];
+  playerNames?: Record<string, string>;
   tickRateMs: number;
 }
 
@@ -47,38 +48,53 @@ interface AdminStats {
   template: `
     <div class="admin-page">
       <header class="topbar">
-        <span class="topbar-title">Strat Admin</span>
+        <span class="topbar-title">
+          <svg class="topbar-logo" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+          Admin
+        </span>
         <div class="topbar-actions">
-          <button class="topbar-btn" (click)="refresh()" [disabled]="refreshing">&#x21bb;</button>
-          <button class="topbar-back" (click)="goHome()">&larr; Home</button>
+          <button class="icon-btn" (click)="refresh()" [disabled]="refreshing" aria-label="Refresh stats">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" [class.spinning]="refreshing"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v5h-5"/></svg>
+          </button>
+          <button class="text-btn" (click)="goHome()" aria-label="Go home">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            Home
+          </button>
         </div>
       </header>
 
       @if (!authenticated) {
         <main class="login-card">
-          <div class="lock-icon">&#128274;</div>
-          <h2>Admin Access</h2>
+          <svg class="login-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3 11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <h2 class="login-heading">Admin Access</h2>
           <input
-            class="pwd-input"
+            class="text-input"
             type="password"
-            placeholder="Enter password"
+            placeholder="Enter admin password"
             [(ngModel)]="password"
             (keydown.enter)="login()"
             autofocus
+            aria-label="Admin password"
           />
           @if (loginError) {
-            <p class="error-msg">{{ loginError }}</p>
+            <p class="error-msg" role="alert">{{ loginError }}</p>
           }
-          <button class="login-btn" (click)="login()" [disabled]="!password">Unlock</button>
+          <button class="btn btn-primary" (click)="login()" [disabled]="!password">Unlock</button>
         </main>
       } @else if (loading) {
         <main class="loading-state">
-          <div class="spinner"></div>
-          <p>Loading stats...</p>
+          <div class="skeleton-group">
+            <div class="skeleton skeleton-card"></div>
+            <div class="skeleton skeleton-card"></div>
+            <div class="skeleton skeleton-card"></div>
+            <div class="skeleton skeleton-card"></div>
+          </div>
+          <div class="skeleton skeleton-section"></div>
+          <div class="skeleton skeleton-section"></div>
         </main>
       } @else if (stats) {
         <main class="dashboard">
-          <div class="summary-row">
+          <div class="stats-grid">
             <div class="stat-card">
               <span class="stat-value">{{ stats.games.totalCreated }}</span>
               <span class="stat-label">Games Created</span>
@@ -97,32 +113,26 @@ interface AdminStats {
             </div>
           </div>
 
-          <section class="section">
-            <h3 class="section-title">Game Health</h3>
+          <section class="card">
+            <h3 class="card-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              Game Health
+            </h3>
             @if (gameHealthRows.length > 0) {
-              <div class="table-wrap">
-                <table class="data-table">
-                  <thead>
-                    <tr>
-                      <th>Game ID</th>
-                      <th>Ticks</th>
-                      <th>Util</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
+              <div class="table-scroll">
+                <table class="table">
+                  <thead><tr><th>Game</th><th>Ticks</th><th>Util</th><th>Status</th></tr></thead>
                   <tbody>
                     @for (entry of gameHealthRows; track entry.id) {
                       <tr>
-                        <td class="mono">{{ shortId(entry.id) }}...</td>
+                        <td class="mono">{{ shortId(entry.id) }}&hellip;</td>
                         <td class="mono">{{ entry.stats.count }}</td>
                         <td class="mono" [ngClass]="utilClass(entry.stats.avgUtil)">
                           {{ entry.stats.avgUtil }}%
-                          <span class="raw-hint">({{ entry.stats.avg }}ms / {{ entry.stats.tickRateMs }}ms tick)</span>
+                          <span class="hint">({{ entry.stats.avg }}ms / {{ entry.stats.tickRateMs }}ms)</span>
                         </td>
                         <td>
-                          <span class="badge" [ngClass]="entry.stats.avgUtil > 100 ? 'badge-warn' : 'badge-ok'">
-                            {{ entry.stats.avgUtil > 100 ? 'LAGGING' : 'OK' }}
-                          </span>
+                          <span class="pill" [ngClass]="entry.stats.avgUtil > 100 ? 'pill-warn' : 'pill-ok'">{{ entry.stats.avgUtil > 100 ? 'LAGGING' : 'OK' }}</span>
                         </td>
                       </tr>
                     }
@@ -130,62 +140,59 @@ interface AdminStats {
                 </table>
               </div>
             } @else {
-              <p class="dim">No tick data yet</p>
+              <p class="empty">No tick data yet</p>
             }
           </section>
 
-          <section class="section">
-            <h3 class="section-title">Tick Diff Summary</h3>
+          <section class="card">
+            <h3 class="card-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Tick Diff
+            </h3>
             @if (stats.tickDiff.overall) {
-              <div class="diff-summary">
-                <div class="diff-bar-wrap">
-                  <div class="diff-bar-label">Avg tick util: <strong class="mono" [ngClass]="utilClass(stats.tickDiff.overall.avgUtil)">{{ stats.tickDiff.overall.avgUtil }}%</strong></div>
+              <div class="diff-section">
+                <div class="diff-bar">
+                  <div class="diff-bar-label">Avg utilization <strong class="mono" [ngClass]="utilClass(stats.tickDiff.overall.avgUtil)">{{ stats.tickDiff.overall.avgUtil }}%</strong></div>
                   <div class="diff-track">
                     <div class="diff-fill" [style.width.%]="utilBarPct()" [ngClass]="stats.tickDiff.overall.avgUtil > 100 ? 'fill-warn' : 'fill-ok'"></div>
                   </div>
                 </div>
-                <div class="diff-range">
+                <div class="diff-meta">
                   <span class="mono">{{ stats.tickDiff.overall.avg }}ms</span>
                   <span class="dim">avg</span>
-                  <span class="sep">|</span>
+                  <span class="sep">&middot;</span>
                   <span class="mono">{{ stats.tickDiff.overall.count }}</span>
                   <span class="dim">samples</span>
                 </div>
               </div>
             } @else {
-              <p class="dim">No tick data yet</p>
+              <p class="empty">No tick data yet</p>
             }
           </section>
 
-          <section class="section">
-            <h3 class="section-title">Finished Games</h3>
+          <section class="card">
+            <h3 class="card-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              Finished Games
+            </h3>
             @if (finishedGameRows.length > 0) {
-              <div class="table-wrap">
-                <table class="data-table">
-                  <thead>
-                    <tr>
-                      <th>Game</th>
-                      <th>Mode</th>
-                      <th>Players</th>
-                      <th>Winner</th>
-                      <th>Ticks</th>
-                      <th>Rate</th>
-                    </tr>
-                  </thead>
+              <div class="table-scroll">
+                <table class="table">
+                  <thead><tr><th>Game</th><th>Mode</th><th>Players</th><th>Winner</th><th>Ticks</th><th>Rate</th></tr></thead>
                   <tbody>
                     @for (g of finishedGameRows; track g.gameId) {
                       <tr>
-                        <td class="mono">{{ shortId(g.gameId) }}...</td>
-                        <td>{{ g.gamemode }}</td>
-                        <td class="players-cell">{{ g.players.join(', ') }}</td>
+                        <td class="mono">{{ shortId(g.gameId) }}&hellip;</td>
+                        <td class="capitalize">{{ g.gamemode }}</td>
+                        <td class="truncate">{{ resolveNames(g.players, g.playerNames) }}</td>
                         <td>
-                          @if (g.winners.length > 0) {
-                            <span class="winner-text">{{ g.winners.join(', ') }}</span>
+                          @if (g.winners && g.winners.length > 0) {
+                            <span class="winner">{{ resolveNames(g.winners, g.playerNames ?? {}) }}</span>
                           } @else {
-                            <span class="dim">—</span>
+                            <span class="dim">&mdash;</span>
                           }
                         </td>
-                        <td class="mono">{{ g.finalTick ?? '—' }}</td>
+                        <td class="mono">{{ g.finalTick ?? '&mdash;' }}</td>
                         <td class="mono">{{ g.tickRateMs }}ms</td>
                       </tr>
                     }
@@ -193,37 +200,43 @@ interface AdminStats {
                 </table>
               </div>
             } @else {
-              <p class="dim">No finished games yet</p>
+              <p class="empty">No finished games</p>
             }
           </section>
 
           <div class="split-row">
-            <section class="section">
-              <h3 class="section-title">Queues</h3>
+            <section class="card">
+              <h3 class="card-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3 3" width="7" height="7"/><rect x="14 3" width="7" height="7"/><rect x="14 14" width="7" height="7"/><rect x="3 14" width="7" height="7"/></svg>
+                Queues
+              </h3>
               @if (queueEntries.length > 0) {
-                <div class="queue-list">
+                <div class="list">
                   @for (q of queueEntries; track q.name) {
-                    <div class="queue-row">
-                      <span class="queue-name">{{ q.name }}</span>
-                      <span class="queue-count mono">{{ q.count }}</span>
+                    <div class="list-row">
+                      <span class="list-label capitalize">{{ q.name }}</span>
+                      <span class="list-value mono">{{ q.count }}</span>
                     </div>
                   }
                 </div>
               } @else {
-                <p class="dim">No active queues</p>
+                <p class="empty">No active queues</p>
               }
             </section>
 
-            <section class="section">
-              <h3 class="section-title">Lobbies</h3>
-              <div class="lobby-stats">
-                <div class="lobby-row">
-                  <span>Active</span>
-                  <span class="mono">{{ stats.lobbies.active }}</span>
+            <section class="card">
+              <h3 class="card-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"/><path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9"/><path d="M12 3v6"/></svg>
+                Lobbies
+              </h3>
+              <div class="list">
+                <div class="list-row">
+                  <span class="list-label">Active</span>
+                  <span class="list-value mono">{{ stats.lobbies.active }}</span>
                 </div>
-                <div class="lobby-row">
-                  <span>Total created</span>
-                  <span class="mono">{{ stats.lobbies.totalCreated }}</span>
+                <div class="list-row">
+                  <span class="list-label">Total created</span>
+                  <span class="list-value mono">{{ stats.lobbies.totalCreated }}</span>
                 </div>
               </div>
             </section>
@@ -233,78 +246,264 @@ interface AdminStats {
     </div>
   `,
   styles: [`
-    :host { --bg: #0f1117; --card: #1a1d28; --border: #2a2d3a; --text: #e1e4ed; --dim: #7a7f8e; --accent: #5b8def; --danger: #ef4444; --warn: #f59e0b; --ok: #22c55e; }
-    .admin-page { max-width: 900px; margin: 0 auto; padding: 0 16px; min-height: 100dvh; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; }
-    .topbar { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
-    .topbar-title { font-size: 20px; font-weight: 700; }
+    :host {
+      --bg: #0b0d14;
+      --surface: #12141e;
+      --card-bg: #181b28;
+      --border: #232638;
+      --border-hover: #2e3145;
+      --text: #e4e6f0;
+      --text-secondary: #9298b0;
+      --text-dim: #5d6380;
+      --accent: #5b8def;
+      --accent-hover: #7ba3f5;
+      --accent-muted: rgba(91,141,239,.12);
+      --danger: #ef4444;
+      --warn: #f59e0b;
+      --ok: #22c55e;
+      --radius: 10px;
+      --radius-sm: 6px;
+    }
+
+    .admin-page {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 24px;
+      min-height: 100dvh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+    .topbar-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .topbar-logo { color: var(--accent); }
     .topbar-actions { display: flex; align-items: center; gap: 8px; }
-    .topbar-back { padding: 10px 16px; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--dim); cursor: pointer; font-size: 14px; transition: .15s; }
-    .topbar-back:hover { color: var(--text); border-color: var(--accent); }
-    .topbar-btn { width: 38px; height: 38px; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--dim); cursor: pointer; font-size: 18px; line-height: 1; transition: .15s; display: flex; align-items: center; justify-content: center; }
-    .topbar-btn:hover { color: var(--accent); border-color: var(--accent); }
-    .topbar-btn:disabled { opacity: .3; }
 
-    .login-card { max-width: 340px; margin: 80px auto; display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 40px 24px; background: var(--card); border-radius: 12px; border: 1px solid var(--border); }
-    .lock-icon { font-size: 36px; margin-bottom: 4px; }
-    .login-card h2 { margin: 0; font-size: 20px; font-weight: 600; }
-    .pwd-input { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 15px; outline: none; transition: .15s; box-sizing: border-box; }
-    .pwd-input:focus { border-color: var(--accent); }
-    .login-btn { width: 100%; padding: 12px; border: none; border-radius: 8px; background: var(--accent); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity .15s; }
-    .login-btn:disabled { opacity: .4; cursor: default; }
-    .login-btn:not(:disabled):hover { opacity: .85; }
-    .error-msg { color: var(--danger); font-size: 13px; margin: 0; }
-
-    .loading-state { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 80px 0; }
-    .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: .15s;
+    }
+    .icon-btn:hover { color: var(--text); border-color: var(--border-hover); background: var(--accent-muted); }
+    .icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .icon-btn:disabled { opacity: .35; pointer-events: none; }
+    .spinning { animation: spin .8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .loading-state p { color: var(--dim); margin: 0; }
 
-    .dashboard { padding-bottom: 48px; }
-    .summary-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
-    .stat-card { display: flex; flex-direction: column; gap: 4px; padding: 20px 16px; background: var(--card); border-radius: 10px; border: 1px solid var(--border); }
+    .text-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: .15s;
+    }
+    .text-btn:hover { color: var(--text); border-color: var(--border-hover); background: var(--accent-muted); }
+    .text-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .login-card {
+      max-width: 360px;
+      margin: 100px auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      padding: 48px 32px;
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+    .login-icon { color: var(--accent); }
+    .login-heading { margin: 0; font-size: 18px; font-weight: 600; }
+
+    .text-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+      transition: .15s;
+      box-sizing: border-box;
+    }
+    .text-input::placeholder { color: var(--text-dim); }
+    .text-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-muted); }
+    .text-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+    .btn {
+      width: 100%;
+      padding: 12px 20px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: .15s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .btn:disabled { opacity: .4; cursor: default; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:not(:disabled):hover { background: var(--accent-hover); }
+
+    .error-msg { color: var(--danger); font-size: 13px; margin: 0; text-align: center; }
+
+    .loading-state { padding: 48px 0; display: flex; flex-direction: column; gap: 16px; }
+    .skeleton-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+    .skeleton {
+      background: linear-gradient(110deg, var(--card-bg) 30%, var(--surface) 50%, var(--card-bg) 70%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s ease-in-out infinite;
+      border-radius: var(--radius);
+    }
+    .skeleton-card { height: 88px; }
+    .skeleton-section { height: 120px; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    .dashboard { padding-bottom: 48px; display: flex; flex-direction: column; gap: 16px; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+
+    .stat-card {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 20px;
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
     .stat-card.accent { border-color: var(--accent); }
-    .stat-value { font-size: 28px; font-weight: 700; }
-    .stat-label { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); }
-    .section { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
-    .section-title { margin: 0 0 16px; font-size: 14px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); font-weight: 600; }
-    .split-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
-    @media (max-width: 600px) { .split-row { grid-template-columns: 1fr; } }
+    .stat-value { font-size: 28px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
+    .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-secondary); font-weight: 600; }
 
-    .table-wrap { overflow-x: auto; }
-    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .data-table th { text-align: left; padding: 8px 12px; color: var(--dim); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--border); white-space: nowrap; }
-    .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-    .data-table tr:last-child td { border-bottom: none; }
-    .data-table tr:hover td { background: rgba(255,255,255,.03); }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .card-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 16px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+    .card-title svg { color: var(--accent); flex-shrink: 0; }
+
+    .split-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 640px) { .split-row { grid-template-columns: 1fr; } }
+
+    .table-scroll { overflow-x: auto; margin: -4px 0; }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .table th {
+      text-align: left;
+      padding: 8px 12px;
+      color: var(--text-dim);
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .table tr:last-child td { border-bottom: none; }
+    .table tbody tr { transition: background .1s; }
+    .table tbody tr:hover td { background: rgba(255,255,255,.025); }
+    .table thead { position: sticky; top: 0; z-index: 1; }
+
     .mono { font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; font-size: 12px; }
-    .raw-hint { font-size: 10px; color: var(--dim); margin-left: 4px; }
-    .players-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
-    .winner-text { color: var(--ok); font-weight: 600; }
+    .hint { font-size: 10px; color: var(--text-dim); margin-left: 4px; }
+    .dim { color: var(--text-dim); }
+    .sep { color: var(--border); margin: 0 4px; }
+    .truncate { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+    .capitalize { text-transform: capitalize; }
+    .empty { color: var(--text-dim); font-size: 13px; margin: 8px 0; }
 
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; letter-spacing: .04em; }
-    .badge-ok { background: rgba(34,197,94,.15); color: var(--ok); }
-    .badge-warn { background: rgba(245,158,11,.15); color: var(--warn); }
+    .winner { color: var(--ok); font-weight: 600; }
 
-    .diff-summary { display: flex; flex-direction: column; gap: 10px; }
-    .diff-bar-wrap { display: flex; flex-direction: column; gap: 6px; }
-    .diff-bar-label { font-size: 13px; }
-    .diff-track { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; width: 100%; }
-    .diff-fill { height: 100%; border-radius: 4px; transition: width .3s; }
+    .pill {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .04em;
+    }
+    .pill-ok { background: rgba(34,197,94,.12); color: var(--ok); }
+    .pill-warn { background: rgba(245,158,11,.12); color: var(--warn); }
+
+    .diff-section { display: flex; flex-direction: column; gap: 12px; }
+    .diff-bar { display: flex; flex-direction: column; gap: 6px; }
+    .diff-bar-label { font-size: 13px; color: var(--text-secondary); }
+    .diff-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .diff-fill { height: 100%; border-radius: 3px; transition: width .4s ease; }
     .fill-ok { background: var(--ok); }
     .fill-warn { background: var(--warn); }
-    .diff-range { display: flex; gap: 6px; align-items: center; font-size: 13px; }
-    .dim { color: var(--dim); }
-    .sep { color: var(--border); }
+    .diff-meta { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--text-secondary); }
 
-    .queue-list { display: flex; flex-direction: column; gap: 8px; }
-    .queue-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
-    .queue-row:last-child { border-bottom: none; }
-    .queue-name { font-size: 14px; text-transform: capitalize; }
-    .queue-count { font-size: 18px; font-weight: 700; }
-
-    .lobby-stats { display: flex; flex-direction: column; gap: 8px; }
-    .lobby-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
-    .lobby-row:last-child { border-bottom: none; }
+    .list { display: flex; flex-direction: column; }
+    .list-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .list-row:last-child { border-bottom: none; }
+    .list-label { font-size: 14px; }
+    .list-value { font-size: 16px; font-weight: 700; }
 
     .tick-ok { color: var(--ok); }
     .tick-warn { color: var(--warn); }
@@ -348,6 +547,11 @@ export class AdminStatsComponent implements OnDestroy {
   }
 
   shortId(id: string): string { return id.slice(0, 8); }
+
+  resolveNames(ids?: string[], names?: Record<string, string>): string {
+    if (!ids || ids.length === 0) return '\u2014';
+    return ids.map(id => (names && names[id]) || id).join(', ');
+  }
 
   utilClass(util: number): string {
     if (util <= 80) return 'tick-ok';
