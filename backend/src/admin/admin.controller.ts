@@ -26,7 +26,8 @@ export class AdminController {
 
     const allLobbies = this.lobbyService.getAllLobbies();
     const queueCounts = this.queueService.getQueueCounts();
+    const runningGames = this.gameDao.getAllGames().filter((g: any) => g.state === 'running').length;
 
-    return this.stats.getStats(allLobbies.length, queueCounts);
+    return this.stats.getStats(allLobbies.length, queueCounts, runningGames);
   }
 }

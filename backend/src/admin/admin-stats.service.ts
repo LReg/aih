@@ -126,7 +126,7 @@ export class AdminStatsService {
     return Math.max(0, Math.round(((tickRateMs + avg) / tickRateMs) * 100));
   }
 
-  async getStats(lobbyCount: number, queueCounts: Record<string, number>) {
+  async getStats(lobbyCount: number, queueCounts: Record<string, number>, runningGames: number) {
     let allTickDocs: any[] = [];
     let lifecycleDocs: LifecycleDoc[] = [];
     try {
@@ -136,7 +136,6 @@ export class AdminStatsService {
       ]);
     } catch {}
     const counters = await this.getCounters();
-    const running = await this.getRunningCount();
 
     const lifecycleByGameId = new Map(lifecycleDocs.map(d => [d.gameId, d]));
 
@@ -175,7 +174,7 @@ export class AdminStatsService {
     return {
       games: {
         totalCreated: counters.totalGamesCreated,
-        running,
+        running: runningGames,
         finished: counters.finishedGames,
         details: lifecycleDocs.map(d => ({
           gameId: d.gameId,

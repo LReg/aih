@@ -30,8 +30,8 @@ export class LldapService implements OnModuleInit {
   constructor() {
     const raw = process.env.LLDAP_URL || '';
     this.baseUrl = raw ? (raw.startsWith('http') ? raw : `http://${raw}:17170`) : '';
-    this.ldapUsername = process.env.LLDAP_USERNAME || '';
-    this.ldapPassword = process.env.LLDAP_PASSWORD || '';
+    this.ldapUsername = process.env.LLDAP_ADMIN_USERNAME || '';
+    this.ldapPassword = process.env.LLDAP_ADMIN_PASSWORD || '';
     this.ldapUrl = process.env.LLDAP_LDAP_URL || '';
 
     this.client = axios.create({
