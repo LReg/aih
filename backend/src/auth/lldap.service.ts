@@ -23,16 +23,10 @@ export class LldapService implements OnModuleInit {
   private client: AxiosInstance;
   private token: string | null = null;
   private baseUrl: string;
-  private ldapUsername: string;
-  private ldapPassword: string;
-  private ldapUrl: string;
 
   constructor() {
     const raw = process.env.LLDAP_URL || '';
     this.baseUrl = raw ? (raw.startsWith('http') ? raw : `http://${raw}:17170`) : '';
-    this.ldapUsername = process.env.LLDAP_ADMIN_USERNAME || '';
-    this.ldapPassword = process.env.LLDAP_ADMIN_PASSWORD || '';
-    this.ldapUrl = process.env.LLDAP_LDAP_URL || (this.baseUrl ? this.baseUrl.replace(/^http/, 'ldap').replace(/:\d+$/, ':3890') : '');
 
     this.client = axios.create({
       baseURL: this.baseUrl,
@@ -59,8 +53,8 @@ export class LldapService implements OnModuleInit {
 
   private async authenticate(): Promise<void> {
     const res = await this.client.post('/auth/simple/login', {
-      username: this.ldapUsername,
-      password: this.ldapPassword,
+      username: process.env.LLDAP_ADMIN_USERNAME || '',
+      password: process.env.LLDAP_ADMIN_PASSWORD || '',
     });
     this.token = res.data.token;
   }
@@ -112,23 +106,12 @@ export class LldapService implements OnModuleInit {
   }
 
   async setPassword(userId: string, password: string): Promise<void> {
-    if (!this.ldapUrl) {
-      this.logger.warn(`LLDAP_LDAP_URL not set — skipping password set for ${userId}`);
-      return;
-    }
-    const { Client, Attribute, Change } = await import('ldapts');
-    const client = new Client({ url: this.ldapUrl, timeout: 5000, connectTimeout: 5000 });
-    try {
-      const baseDn = process.env.LLDAP_BASE_DN || 'dc=example,dc=com';
-      await client.bind(`uid=${this.ldapUsername},ou=people,${baseDn}`, this.ldapPassword);
-      const change = new Change({
-        operation: 'replace',
-        modification: new Attribute({ type: 'userPassword', values: [password] }),
-      });
-      await client.modify(`uid=${userId},ou=people,${baseDn}`, change);
-      this.logger.log(`Password set for ${userId}`);
-    } finally {
-      await client.unbind();
-    }
+    const mutation = `
+      mutation SetPassword($userId: String!, $password: String!) {
+        setPassword(userId: $userId, password: $password) { ok }
+      }
+    `;
+    await this.graphql(mutation, { userId, password });
+    this.logger.log(`Password set for ${userId}`);
   }
 }
