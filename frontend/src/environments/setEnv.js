@@ -12,7 +12,7 @@ const setEnv = () => {
   apiUrl: "${process.env.API_URL}",
   authUrl: "${process.env.AUTH_URL}",
   clientId: "${process.env.CLIENT_ID}",
-  features: { sso: false, registration: false },
+  features: { sso: true, registration: false },
 };`,
     }
   ];

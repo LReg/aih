@@ -28,7 +28,8 @@ export class LldapService implements OnModuleInit {
   private ldapUrl: string;
 
   constructor() {
-    this.baseUrl = process.env.LLDAP_URL || '';
+    const raw = process.env.LLDAP_URL || '';
+    this.baseUrl = raw ? (raw.startsWith('http') ? raw : `http://${raw}:17170`) : '';
     this.ldapUsername = process.env.LLDAP_USERNAME || '';
     this.ldapPassword = process.env.LLDAP_PASSWORD || '';
     this.ldapUrl = process.env.LLDAP_LDAP_URL || '';
