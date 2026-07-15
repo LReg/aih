@@ -37,10 +37,21 @@ export class AuthService {
   private configure() {
     if (this.localUuid) return;
 
-    if (isPlatformBrowser(this.platformId)) {
+    const isBrowser = isPlatformBrowser(this.platformId);
+
+    if (isBrowser) {
       const url = window.location.href;
       const hasCallbackParams = url.includes('code=') || url.includes('state=');
+      const hasOidcError = url.includes('?error=') || url.includes('&error=');
       console.log('[Auth] configure URL:', url, 'hasCallback:', hasCallbackParams);
+
+      if (hasOidcError && !hasCallbackParams) {
+        console.warn('[Auth] OIDC error in URL, redirecting to login');
+        window.history.replaceState({}, '', window.location.pathname);
+        this.router.navigate(['/login']);
+        this.initialized.next(true);
+        return;
+      }
     }
 
     this.oidcSecurityService
@@ -53,11 +64,18 @@ export class AuthService {
             this.loggedIn.next(true);
           } else if (loginResponse.errorMessage) {
             console.warn('[Auth] checkAuth error:', loginResponse.errorMessage);
+            if (isBrowser && (window.location.href.includes('?error=') || window.location.href.includes('&error='))) {
+              window.history.replaceState({}, '', window.location.pathname);
+              this.router.navigate(['/login']);
+            }
           }
         },
         error: (err) => {
           console.error('[Auth] checkAuth failed:', err);
           this.initialized.next(true);
+          if (isBrowser) {
+            this.router.navigate(['/login']);
+          }
         },
       });
   }
