@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import axios, { AxiosInstance } from 'axios';
+import { Client, Attribute, Change } from 'ldapts';
 
 interface LldapUser {
   id: string;
@@ -17,16 +18,35 @@ interface CreateUserInput {
   displayName?: string;
 }
 
+function deriveBaseDn(): string {
+  const authDomain = process.env.AUTH_DOMAIN || '';
+  const dotIndex = authDomain.indexOf('.');
+  if (dotIndex > 0) {
+    return authDomain.substring(dotIndex + 1).split('.').map(p => `dc=${p}`).join(',');
+  }
+  return process.env.LLDAP_LDAP_BASE_DN || 'dc=example,dc=com';
+}
+
+function deriveLdapHost(): string {
+  const raw = process.env.LLDAP_URL || '';
+  const host = raw.replace(/^https?:\/\//, '').replace(/:\d+$/, '');
+  return `${host}:3890`;
+}
+
 @Injectable()
 export class LldapService implements OnModuleInit {
   private readonly logger = new Logger(LldapService.name);
   private client: AxiosInstance;
-  private token: string | null = null;
   private baseUrl: string;
+  private ldapHost: string;
+  private baseDn: string;
+  private token: string | null = null;
 
   constructor() {
     const raw = process.env.LLDAP_URL || '';
     this.baseUrl = raw ? (raw.startsWith('http') ? raw : `http://${raw}:17170`) : '';
+    this.ldapHost = deriveLdapHost();
+    this.baseDn = deriveBaseDn();
 
     this.client = axios.create({
       baseURL: this.baseUrl,
@@ -41,7 +61,7 @@ export class LldapService implements OnModuleInit {
     }
     try {
       await this.authenticate();
-      this.logger.log('LLDAP connected');
+      this.logger.log(`LLDAP connected — base DN: ${this.baseDn}`);
     } catch (err) {
       this.logger.error(`LLDAP init failed: ${err}`);
     }
@@ -106,12 +126,28 @@ export class LldapService implements OnModuleInit {
   }
 
   async setPassword(userId: string, password: string): Promise<void> {
-    const mutation = `
-      mutation SetPassword($userId: String!, $password: String!) {
-        setPassword(userId: $userId, password: $password) { ok }
-      }
-    `;
-    await this.graphql(mutation, { userId, password });
-    this.logger.log(`Password set for ${userId}`);
+    const client = new Client({
+      url: `ldap://${this.ldapHost}`,
+      timeout: 5000,
+      connectTimeout: 5000,
+    });
+    try {
+      await client.bind(
+        `uid=${process.env.LLDAP_ADMIN_USERNAME},ou=people,${this.baseDn}`,
+        process.env.LLDAP_ADMIN_PASSWORD || '',
+      );
+      const change = new Change({
+        operation: 'replace',
+        modification: new Attribute({
+          type: 'userPassword',
+          values: [password],
+        }),
+      });
+      const userDn = userId.includes(',') ? userId : `uid=${userId},ou=people,${this.baseDn}`;
+      await client.modify(userDn, change);
+      this.logger.log(`Password set for ${userId}`);
+    } finally {
+      await client.unbind().catch(() => {});
+    }
   }
 }
