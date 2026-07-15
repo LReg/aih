@@ -8,7 +8,7 @@ export async function upsertUser(db: Db, user: User): Promise<UpdateResult | nul
     try {
         return await db.collection<User>('user').updateOne(
             { email: user.email },
-            { $set: { email: user.email, name: user.name, preferredUsername: user.preferredUsername } },
+            { $set: { userId: user.userId, email: user.email, name: user.name, preferredUsername: user.preferredUsername } },
             options
         );
     } catch (err) {
@@ -24,6 +24,7 @@ export async function upsertUserLocal(db: Db, uuid: string, username: string): P
             { email },
             {
                 $set: {
+                    userId: uuid,
                     email,
                     name: username,
                     preferredUsername: username,
@@ -78,6 +79,43 @@ export async function getAllUsers(db: Db): Promise<User[]> {
         return await usersCursor.toArray();
     } catch (err) {
         console.error('Error while fetching all users:', err);
+        throw err;
+    }
+}
+
+export async function getUserByPreferredUsername(db: Db, preferredUsername: string): Promise<{ userId?: string; email?: string; preferredUsername?: string; localAuth?: boolean } | null> {
+    try {
+        return await db.collection<User>('user').findOne(
+            { preferredUsername },
+            { projection: { userId: 1, email: 1, preferredUsername: 1, localAuth: 1, _id: 0 } },
+        ) as any;
+    } catch (err) {
+        console.error('Error while fetching user by preferredUsername:', err);
+        throw err;
+    }
+}
+
+export async function getUsersByIds(db: Db, userIds: string[]): Promise<{ userId: string; preferredUsername: string; localAuth?: boolean; email?: string }[]> {
+    try {
+        const cursor = await db.collection<User>('user').find(
+            { userId: { $in: userIds } },
+            { projection: { userId: 1, preferredUsername: 1, localAuth: 1, email: 1, _id: 0 } },
+        );
+        return await cursor.toArray() as any;
+    } catch (err) {
+        console.error('Error while fetching users by ids:', err);
+        throw err;
+    }
+}
+
+export async function getUserById(db: Db, userId: string): Promise<{ userId?: string; email?: string; preferredUsername?: string; localAuth?: boolean } | null> {
+    try {
+        return await db.collection<User>('user').findOne(
+            { userId },
+            { projection: { userId: 1, email: 1, preferredUsername: 1, localAuth: 1, _id: 0 } },
+        ) as any;
+    } catch (err) {
+        console.error('Error while fetching user by id:', err);
         throw err;
     }
 }

@@ -61,6 +61,13 @@ export class GameScene extends Phaser.Scene {
     this.targetingAction = action;
     const label = action === 'walk' ? 'Click map to move' : 'Click map to attack';
     this.overlays.showTargetingLabel(label);
+    const ptr = this.input.activePointer;
+    this.overlays.drawTargetingHover(ptr.worldX, ptr.worldY, action, this.gameState);
+    const tileX = Math.floor(ptr.worldX / TILE_SIZE);
+    const tileY = Math.floor(ptr.worldY / TILE_SIZE);
+    const positions = this.getSpreadPreview(tileX, tileY);
+    const color = action === 'attack' ? 0xff3333 : 0x33ff33;
+    this.overlays.drawSpreadPreview(positions, color);
     this.onTargetingChanged.next(action);
   }
 
@@ -370,9 +377,26 @@ export class GameScene extends Phaser.Scene {
       if (e.ownerId === this.playerId) friends.push({ x: e.x, y: e.y });
     }
 
-    if (this.darknessRange <= 0 || friends.length === 0) {
-      this.fogNeedsClear = true;
+    if (this.darknessRange <= 0) {
+      this.fogGraphics.clear();
+      this.fogColorBatches = [];
       this.fogDirty = false;
+      this.fogNeedsClear = false;
+      this.fogVisibleIds = new Set(this.entitiesMap.keys());
+      this.entityManager.setFogVisibleIds(this.fogVisibleIds);
+      this.entityManager.updateVisibility(this.fogVisibleIds);
+      perfEnd('computeFogData');
+      return;
+    }
+
+    if (friends.length === 0) {
+      this.fogGraphics.clear();
+      this.fogColorBatches = [];
+      this.fogDirty = false;
+      this.fogNeedsClear = false;
+      this.fogVisibleIds = new Set(this.entitiesMap.keys());
+      this.entityManager.setFogVisibleIds(this.fogVisibleIds);
+      this.entityManager.updateVisibility(this.fogVisibleIds);
       perfEnd('computeFogData');
       return;
     }
@@ -440,6 +464,8 @@ export class GameScene extends Phaser.Scene {
       if (e.ownerId === this.playerId) { this.fogVisibleIds.add(e.id); continue; }
       if (rowMarks[e.y]?.[e.x]) this.fogVisibleIds.add(e.id);
     }
+    this.entityManager.setFogVisibleIds(this.fogVisibleIds);
+    this.entityManager.updateVisibility(this.fogVisibleIds);
     perfEnd('computeFogData');
   }
 

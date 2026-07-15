@@ -238,6 +238,28 @@
 .bd-btn.active { border-color: #6c5ce7; background: #2a2a55; color: #e8e8f0; }
 .bd-icon { font-size: 16px; line-height: 1; }
 
+.scoreboard-overlay {
+  position: fixed; inset: 0; z-index: 2500;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.scoreboard {
+  background: rgba(13,13,26,.92); border: 1px solid #2a2a45;
+  border-radius: 10px; padding: 16px 20px;
+  min-width: 300px; max-width: 400px;
+  backdrop-filter: blur(8px);
+}
+.scoreboard h3 { margin: 0 0 10px; font-size: 14px; color: #e8e8f0; text-align: center; }
+.scoreboard table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.scoreboard th { text-align: left; padding: 4px 6px; color: #7070a0; font-weight: 500; border-bottom: 1px solid #2a2a45; }
+.scoreboard td { padding: 4px 6px; color: #c0c0d0; border-bottom: 1px solid #1a1a30; }
+.sb-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; }
+.sb-you { color: #7070a0; font-size: 11px; }
+.sb-elo { font-weight: 700; }
+.sb-elo-na { color: #555; }
+.sb-rated { font-size: 11px; color: #5ce75c; font-weight: 600; margin-left: 6px; }
+.sb-casual { font-size: 11px; color: #9090b0; font-weight: 600; margin-left: 6px; }
+
 @media (max-width: 480px) {
   .top-bar { padding: 4px 8px; min-height: 40px; gap: 4px; }
   .player-label { font-size: 12px; }

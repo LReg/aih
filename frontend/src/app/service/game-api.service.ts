@@ -23,6 +23,14 @@ export class GameApiService {
     return this.http.get<GameState>(`${environment.apiUrl}/game/${gameId}`);
   }
 
+  getEloGame(gameId: string) {
+    return this.http.get<{ eloGame: boolean }>(`${environment.apiUrl}/game/${gameId}/elo`);
+  }
+
+  getActiveGame() {
+    return this.http.get<{ gameId: string | null }>(`${environment.apiUrl}/game/active`);
+  }
+
   register(email: string, name: string, password: string) {
     return this.http.post<{ success: boolean; message: string }>(`${environment.apiUrl}/auth/register`, { email, name, password });
   }

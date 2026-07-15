@@ -3,9 +3,11 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { first, Subscription } from 'rxjs';
 import Phaser from 'phaser';
 import { GameApiService } from '../../service/game-api.service';
+import { ProfileApiService } from '../../service/profile-api.service';
 import { SocketService } from '../../service/socket.service';
 import { AuthService } from '../../service/auth/auth.service';
 import { GameState, GameStateDiff, StateUpdate, Entity, isOverridable } from '../../types/game.types';
+import { eloColor } from '../../util/elo';
 import { BootScene } from './scenes/boot-scene';
 import { GameScene } from './scenes/game-scene';
 
@@ -21,7 +23,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   private phaser!: Phaser.Game;
   private gameScene!: GameScene;
   private gameId!: string;
-  private userId = '';
+  userId = '';
   private subs: Subscription[] = [];
   private sceneReady = false;
   private pendingStates: StateUpdate[] = [];
@@ -42,12 +44,19 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   selectedBarracksSpawn = 'soldier';
   winners: string[] = [];
   isWinner = false;
+  playerNames: Record<string, string> = {};
+  eloResults: { userId: string; eloDelta: number; placement: number; username: string }[] = [];
+  eloGame = false;
+  placementOrder: string[] = [];
   gameTick = 0;
   elapsedTime = '00:00';
   playerName = '';
   playerColor = '#ccc';
   showTickInfo = false;
   tickCalcTimes: number[] = [];
+  showScoreboard = false;
+  scoreboardPlayers: { name: string; color: string; elo: number | null }[] = [];
+  eloColor = eloColor;
 
   get peaceRemaining(): number {
     if (!this.peaceUntil) return 0;
@@ -111,6 +120,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private api: GameApiService,
+    private profileApi: ProfileApiService,
     private socket: SocketService,
     private auth: AuthService,
     private ngZone: NgZone,
@@ -119,10 +129,9 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   ngAfterViewInit() {
     this.gameId = this.route.snapshot.paramMap.get('gameId')!;
 
-    this.auth.userData$().pipe(first()).subscribe(data => {
-      this.userId = (data['preferred_username'] as string) || '';
+    this.auth.userId$().pipe(first()).subscribe(userId => {
+      this.userId = userId;
 
-      // Connect socket BEFORE Phaser init to catch early state updates
       this.socket.connectGame();
       this.socket.joinGameRoom(this.gameId);
       this.stateSub = this.socket.stateUpdate$.subscribe((update: StateUpdate) => {
@@ -130,13 +139,34 @@ export class GameComponent implements AfterViewInit, OnDestroy {
         this.handleStateUpdate(update);
       });
 
+      this.subs.push(this.socket.elos$.subscribe(data => {
+        this.eloResults = data.results;
+        if (data.eloGame !== undefined) this.eloGame = data.eloGame;
+        if (data.playerNames) this.playerNames = { ...this.playerNames, ...data.playerNames };
+        if (data.placementOrder) this.placementOrder = data.placementOrder;
+      }));
+
       this.initPhaser();
+    });
+
+    this.auth.username$().pipe(first()).subscribe(name => {
+      this.playerName = name;
+    });
+
+    this.api.getEloGame(this.gameId).subscribe({
+      next: r => this.eloGame = r.eloGame,
     });
   }
 
   @HostListener('window:keydown', ['$event'])
   onKeydown(e: KeyboardEvent) {
     if (this.gameFinished) return;
+
+    if (e.key === 'Tab' || e.key === '\t') {
+      e.preventDefault();
+      this.showScoreboard = true;
+      return;
+    }
 
     switch (e.key.toLowerCase()) {
       case 'q':
@@ -263,8 +293,9 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     this.peaceUntil = state.peaceUntil;
     if (state.tickCalcTime !== undefined) this.recordTickCalc(state.tickCalcTime);
     this.elapsedTime = this.formatElapsed(state.startedAt);
-    this.playerName = this.userId;
+    if (!this.playerName) this.playerName = this.userId;
     this.playerColor = state.playerColors?.[this.userId] || '#ccc';
+    this.playerNames = state.playerNames || {};
     this.maxBarracks = state.maxBarracks;
     this.gameScene.updateFromState(state);
     this.barracksCount = this.gameScene.countPlayerBarracks(this.userId);
@@ -287,8 +318,13 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     if (state.tickCalcTime !== undefined) this.recordTickCalc(state.tickCalcTime);
     this.elapsedTime = this.formatElapsed(state.startedAt);
     this.playerColor = state.playerColors?.[this.userId] || '#ccc';
+    this.playerNames = state.playerNames || {};
     this.barracksCount = this.gameScene.countPlayerBarracks(this.userId);
     this.soldierCount = this.gameScene.countPlayerSoldiers(this.userId);
+
+    if (state.players && this.scoreboardPlayers.length === 0) {
+      this.buildScoreboard(state.players, state.playerColors, state.playerNames);
+    }
 
     if (state.state === 'finished') {
       this.gameFinished = true;
@@ -420,7 +456,36 @@ export class GameComponent implements AfterViewInit, OnDestroy {
 
   leaveGame() { this.router.navigate(['/']); }
 
+  @HostListener('window:keyup', ['$event'])
+  onKeyup(e: KeyboardEvent) {
+    if (e.key === 'Tab' || e.key === '\t') {
+      this.showScoreboard = false;
+    }
+  }
+
   toggleTickInfo() { this.showTickInfo = !this.showTickInfo; }
+
+  toggleScoreboard() {
+    this.showScoreboard = !this.showScoreboard;
+  }
+
+  private buildScoreboard(players: string[], playerColors: Record<string, string>, playerNames?: Record<string, string>) {
+    for (const userId of players) {
+      const sub = this.profileApi.getProfile(userId).pipe(first()).subscribe({
+        next: p => {
+          const name = playerNames?.[userId] || userId;
+          const existing = this.scoreboardPlayers.find(sp => sp.name === name);
+          if (existing) existing.elo = p.elo;
+          else this.scoreboardPlayers.push({ name, color: playerColors[userId] || '#ccc', elo: p.elo });
+        },
+        error: () => {
+          const name = playerNames?.[userId] || userId;
+          this.scoreboardPlayers.push({ name, color: playerColors[userId] || '#ccc', elo: null });
+        },
+      });
+      this.subs.push(sub);
+    }
+  }
 
   private recordTickCalc(ms: number) {
     this.tickCalcTimes.push(ms);

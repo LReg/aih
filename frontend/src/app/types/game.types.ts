@@ -74,6 +74,7 @@ export interface GameState {
   };
   players: string[];
   playerColors: Record<string, string>;
+  playerNames: Record<string, string>;
   state: string;
   winners: string[];
   losers: string[];

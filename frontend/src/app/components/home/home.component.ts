@@ -1,9 +1,11 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Subscription, first } from 'rxjs';
 import { GameApiService } from '../../service/game-api.service';
+import { ProfileApiService } from '../../service/profile-api.service';
 import { SocketService } from '../../service/socket.service';
 import { AuthService } from '../../service/auth/auth.service';
+import { eloColor } from '../../util/elo';
 import { GamemodeSelectComponent, GamemodeConfig, QueueState } from '../gamemode-select/gamemode-select.component';
 import { QueueStatusComponent } from '../queue-status/queue-status.component';
 import { environment } from '../../../environments/environment';
@@ -11,17 +13,35 @@ import { environment } from '../../../environments/environment';
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [GamemodeSelectComponent, QueueStatusComponent],
+  imports: [GamemodeSelectComponent, QueueStatusComponent, RouterLink],
   template: `
     <div class="lobby">
       <header class="lobby-header">
         <h1>Strat</h1>
         <div class="header-actions">
+          @if (username && !authService.isLocalAuth()) {
+            <a class="user-badge" routerLink="/profile">
+              <span class="avatar" [style.background]="eloColor(elo ?? 1000)">{{ username[0].toUpperCase() }}</span>
+              <span class="uname">{{ username }}</span>
+              <span class="elo" [style.color]="eloColor(elo ?? 1000)">{{ elo ?? '...' }}</span>
+            </a>
+          } @else if (username) {
+            <span class="user-badge">
+              <span class="avatar" style="background:var(--accent)">{{ username[0].toUpperCase() }}</span>
+              <span class="uname">{{ username }}</span>
+            </span>
+          }
           @if (authService.isLocalAuth()) {
             <button class="logout-btn" (click)="logout()">Logout</button>
           }
         </div>
       </header>
+
+      @if (activeGameId) {
+        <div class="active-game-banner" (click)="rejoinGame()">
+          Active game in progress — click to rejoin
+        </div>
+      }
 
       <section class="content">
         <button class="create-lobby-btn" (click)="createLobby()">+ Create Lobby</button>
@@ -75,6 +95,12 @@ import { environment } from '../../../environments/environment';
       margin-bottom: 32px;
     }
     h1 { margin: 0; font-size: 28px; color: var(--text-primary); }
+    .header-actions { display: flex; align-items: center; gap: 12px; }
+    .user-badge { display: flex; align-items: center; gap: 8px; background: var(--surface); padding: 6px 12px 6px 6px; border-radius: 20px; border: 1px solid var(--border); text-decoration: none; cursor: pointer; transition: border-color .15s; }
+    .user-badge:hover { border-color: var(--accent); }
+    .avatar { width: 28px; height: 28px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; flex-shrink: 0; }
+    .uname { color: var(--text-primary); font-size: 14px; font-weight: 500; }
+    .elo { font-size: 13px; font-weight: 700; }
     .logout-btn {
       padding: 10px 18px;
       border: 1px solid var(--border);
@@ -91,6 +117,13 @@ import { environment } from '../../../environments/environment';
       cursor: pointer; text-align: center; transition: background .15s; min-height: 48px;
     }
     .create-lobby-btn:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+    .active-game-banner {
+      padding: 16px; border: 2px solid var(--accent, #3b82f6); border-radius: 10px;
+      background: color-mix(in srgb, var(--accent, #3b82f6) 12%, transparent);
+      color: var(--accent, #3b82f6); font-size: 15px; font-weight: 600;
+      text-align: center; cursor: pointer; transition: background .15s;
+    }
+    .active-game-banner:hover { background: color-mix(in srgb, var(--accent, #3b82f6) 22%, transparent); }
     .content {
       display: flex;
       flex-direction: column;
@@ -100,11 +133,15 @@ import { environment } from '../../../environments/environment';
 })
 export class HomeComponent implements OnInit, OnDestroy {
   environment = environment;
+  username = '';
+  elo: number | null = null;
+  eloColor = eloColor;
   queuedGamemode: string | null = null;
   countdownSeconds = 0;
   countdownPlayerCount = 0;
   countdownMaxPlayers = 0;
   queueCounts: Record<string, number> = {};
+  activeGameId: string | null = null;
   casualConfig: GamemodeConfig = { maxPlayers: 5, mapWidth: 150, mapHeight: 150, tickRateMs: 1000 };
   massiveConfig: GamemodeConfig = { maxPlayers: 10, mapWidth: 400, mapHeight: 400, tickRateMs: 1000 };
   slowConfig: GamemodeConfig = { maxPlayers: 5, mapWidth: 100, mapHeight: 100, tickRateMs: 1500 };
@@ -131,15 +168,22 @@ export class HomeComponent implements OnInit, OnDestroy {
   constructor(
     public authService: AuthService,
     private api: GameApiService,
+    private profileApi: ProfileApiService,
     private socket: SocketService,
     private router: Router,
   ) {}
 
   ngOnInit() {
     this.subs.push(
-      this.authService.userData$().pipe(first()).subscribe(data => {
-        const userId = (data['preferred_username'] as string) || '';
+      this.authService.userId$().pipe(first()).subscribe(userId => {
         this.socket.connectMatchmaking(userId);
+      }),
+      this.authService.username$().pipe(first()).subscribe(name => {
+        this.username = name;
+        this.profileApi.getMyProfile().subscribe({
+          next: p => this.elo = p.elo,
+          error: () => this.elo = null,
+        });
       }),
       this.socket.countdownTick$.subscribe(e => {
         this.queuedGamemode = e.gamemode;
@@ -158,6 +202,9 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.countdownSeconds = 0;
         this.countdownPlayerCount = 0;
         this.countdownMaxPlayers = 0;
+      }),
+      this.api.getActiveGame().subscribe(r => {
+        this.activeGameId = r.gameId;
       }),
       this.socket.gameFound$.subscribe(e => {
         this.router.navigate(['/game', e.gameId]);
@@ -192,6 +239,10 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.countdownPlayerCount = 0;
       this.countdownMaxPlayers = 0;
     });
+  }
+
+  rejoinGame() {
+    if (this.activeGameId) this.router.navigate(['/game', this.activeGameId]);
   }
 
   createLobby() {

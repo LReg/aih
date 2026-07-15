@@ -1,5 +1,6 @@
-import { Controller, Post, Get, Param, Body, Req, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, Req, Logger, UseGuards } from '@nestjs/common';
 import { GameService } from './game.service';
+import { AuthGuard } from '../auth/auth.guard';
 import type { Request } from 'express';
 
 @Controller()
@@ -8,13 +9,20 @@ export class GameController {
 
   constructor(private gameService: GameService) {}
 
+  @UseGuards(AuthGuard)
+  @Get('game/active')
+  getActiveGame(@Req() req: Request): { gameId: string | null } {
+    const userId = req.user?.userId || req.user?.preferredUsername || '';
+    return { gameId: this.gameService.getActiveGame(userId) };
+  }
+
   @Post('game/:gameId/action')
   submitAction(
     @Param('gameId') gameId: string,
     @Body() body: { type: string; payload: unknown },
     @Req() req: Request,
   ) {
-    const playerId = req.user?.preferredUsername || 'unknown';
+    const playerId = req.user?.userId || req.user?.preferredUsername || 'unknown';
     this.logger.log(`action: user=${playerId} game=${gameId} type=${body.type}`);
     const result = this.gameService.queueAction(gameId, playerId, body);
     this.logger.log(`action result: accepted=${result.accepted}${result.actionId ? ' id=' + result.actionId : ''}`);
@@ -25,4 +33,10 @@ export class GameController {
   getGame(@Param('gameId') gameId: string) {
     return this.gameService.getGame(gameId);
   }
+
+  @Get('game/:gameId/elo')
+  async getEloRating(@Param('gameId') gameId: string): Promise<{ eloGame: boolean }> {
+    return this.gameService.checkEloGame(gameId);
+  }
+
 }

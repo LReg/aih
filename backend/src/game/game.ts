@@ -41,7 +41,9 @@ export class Game {
   effects: Effect[] = [];
   winners: string[] = [];
   losers: string[] = [];
+  eliminationOrder: string[] = [];
   playerColors: Record<string, string>;
+  playerNames: Record<string, string> = {};
 
   constructor(
     public readonly gamemode: Gamemode,
@@ -67,6 +69,7 @@ export class Game {
     this.players.length = 0;
     this.winners.length = 0;
     this.losers.length = 0;
+    this.eliminationOrder.length = 0;
   }
 
   private serializeEntity(e: Entity): Record<string, unknown> {
@@ -110,9 +113,11 @@ export class Game {
       darknessRange: this.config.darknessRange,
       players: this.players,
       playerColors: this.playerColors,
+      playerNames: this.playerNames,
       state: this.state,
       winners: this.winners,
       losers: this.losers,
+      eliminationOrder: this.eliminationOrder,
       createdAt: this.createdAt,
     };
   }

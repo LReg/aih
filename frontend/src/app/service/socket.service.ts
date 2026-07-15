@@ -19,8 +19,10 @@ export class SocketService implements OnDestroy {
   private lobbyStartedSubject = new Subject<LobbyStartedEvent>();
   private lobbyCancelledSubject = new Subject<{ lobbyId: string }>();
   private queueUpdateSubject = new Subject<Record<string, number>>();
+  private elosSubject = new Subject<{ elos: Record<string, number>; results: { userId: string; eloDelta: number; placement: number; username: string }[]; eloGame: boolean; placementOrder: string[]; playerNames: Record<string, string> }>();
 
   countdownTick$: Observable<CountdownEvent> = this.tickSubject.asObservable();
+  elos$: Observable<{ elos: Record<string, number>; results: { userId: string; eloDelta: number; placement: number; username: string }[]; eloGame: boolean; placementOrder: string[]; playerNames: Record<string, string> }> = this.elosSubject.asObservable();
   queueUpdate$: Observable<Record<string, number>> = this.queueUpdateSubject.asObservable();
   countdownCancelled$: Observable<string> = this.cancelledSubject.asObservable();
   requeued$: Observable<string> = this.requeuedSubject.asObservable();
@@ -76,6 +78,16 @@ export class SocketService implements OnDestroy {
 
     this.gameSocket.on('stateUpdate', (data: GameState) => {
       this.stateUpdateSubject.next(data);
+    });
+
+    this.gameSocket.on('elos', (data: any) => {
+      this.elosSubject.next({
+        elos: data.elos || {},
+        results: data.results || [],
+        eloGame: data.eloGame || false,
+        placementOrder: data.placementOrder || [],
+        playerNames: data.playerNames || {},
+      });
     });
   }
 

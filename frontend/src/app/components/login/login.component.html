@@ -9,7 +9,7 @@
     <div *ngIf="!(authService.loggedIn | async); else loggedIn">
       @if (env.features.sso) {
         <div class="tab-bar">
-          <button class="tab" [class.active]="!useLocal" (click)="useLocal = false">SSO Login</button>
+          <button class="tab" [class.active]="!useLocal" (click)="useLocal = false">Login</button>
           <button class="tab" [class.active]="useLocal" (click)="useLocal = true">Guest</button>
         </div>
       }
@@ -19,7 +19,7 @@
           <p class="tab-desc">Sign in with your Authelia account</p>
           <button class="btn btn-primary" (click)="authService.login()">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-            Sign in with SSO
+            Sign in
           </button>
           @if (env.features.registration) {
             <p class="register-link">Don't have an account? <a routerLink="/register">Create one</a></p>

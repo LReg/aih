@@ -11,15 +11,15 @@ export class QueueController {
 
   @Post('queue/join')
   join(@Body() body: { gamemode: Gamemode }, @Req() req: Request) {
-    this.logger.log(`POST /queue/join gamemode="${body.gamemode}" user="${req.user?.preferredUsername}" role="${req.user?.role}" localAuth="${req.user?.localAuth}"`);
-    this.queueService.join(body.gamemode, req.user.preferredUsername);
+    this.logger.log(`POST /queue/join gamemode="${body.gamemode}" user="${req.user?.userId}" role="${req.user?.role}" localAuth="${req.user?.localAuth}"`);
+    this.queueService.join(body.gamemode, req.user!.userId);
     return { queued: true };
   }
 
   @Post('queue/leave')
   leave(@Body() body: { gamemode: Gamemode }, @Req() req: Request) {
-    this.logger.log(`POST /queue/leave gamemode="${body.gamemode}" user="${req.user?.preferredUsername}"`);
-    this.queueService.leave(body.gamemode, req.user.preferredUsername);
+    this.logger.log(`POST /queue/leave gamemode="${body.gamemode}" user="${req.user?.userId}"`);
+    this.queueService.leave(body.gamemode, req.user!.userId);
     return { left: true };
   }
 }

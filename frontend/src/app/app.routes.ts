@@ -7,6 +7,7 @@ import {GameComponent} from "./components/game/game.component";
 import {LobbyComponent} from "./components/lobby/lobby.component";
 import {AdminStatsComponent} from "./components/admin-stats/admin-stats.component";
 import {isLoggedIn} from "./security/IsLoggedIn";
+import {ProfileComponent} from "./components/profile/profile.component";
 import { environment } from '../environments/environment';
 
 function registrationEnabled() {
@@ -25,6 +26,11 @@ export const routes: Routes = [
     canActivate: [registrationEnabled],
   },
   {
+    path: 'home',
+    component: HomeComponent,
+    canActivate: [isLoggedIn],
+  },
+  {
     path: '',
     component: HomeComponent,
     canActivate: [isLoggedIn],
@@ -37,6 +43,11 @@ export const routes: Routes = [
   {
     path: 'lobby/:id',
     component: LobbyComponent,
+    canActivate: [isLoggedIn],
+  },
+  {
+    path: 'profile',
+    component: ProfileComponent,
     canActivate: [isLoggedIn],
   },
   {

@@ -2,6 +2,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription, first } from 'rxjs';
 import { GameApiService } from '../../service/game-api.service';
+import { ProfileApiService } from '../../service/profile-api.service';
 import { SocketService } from '../../service/socket.service';
 import { AuthService } from '../../service/auth/auth.service';
 import { LobbyData, LobbySettings } from '../../types/game.types';
@@ -43,9 +44,9 @@ import { environment } from '../../../environments/environment';
             @for (p of lobby?.players; track p) {
               <div class="player-row" [class.is-host]="p === lobby?.hostId">
                 <div class="player-avatar" [class.host-avatar]="p === lobby?.hostId">
-                  {{ p.charAt(0).toUpperCase() }}
+                  {{ (playerNames[p] || p).charAt(0).toUpperCase() }}
                 </div>
-                <span class="player-name">{{ p }}</span>
+                <span class="player-name">{{ playerNames[p] || p }}</span>
                 @if (p === lobby?.hostId) {
                   <span class="host-badge">Host</span>
                 }
@@ -303,6 +304,7 @@ export class LobbyComponent implements OnInit, OnDestroy {
   lobby: LobbyData | null = null;
   isHost = false;
   copied = false;
+  playerNames: Record<string, string> = {};
 
   get inviteUrl(): string {
     return `${environment.baseUrl}/lobby/${this.lobbyId}`;
@@ -316,6 +318,7 @@ export class LobbyComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private api: GameApiService,
+    private profileApi: ProfileApiService,
     private socket: SocketService,
     public authService: AuthService,
   ) {}
@@ -324,8 +327,8 @@ export class LobbyComponent implements OnInit, OnDestroy {
     this.lobbyId = this.route.snapshot.paramMap.get('id')!;
 
     this.subs.push(
-      this.authService.userData$().pipe(first()).subscribe(data => {
-        this.userId = (data['preferred_username'] as string) || '';
+      this.authService.userId$().pipe(first()).subscribe(userId => {
+        this.userId = userId;
         this.socket.connectLobby(this.userId);
         this.socket.joinLobbyRoom(this.lobbyId);
         this.loadLobby();
@@ -335,6 +338,7 @@ export class LobbyComponent implements OnInit, OnDestroy {
         if (data.id === this.lobbyId) {
           this.lobby = data;
           this.isHost = data.hostId === this.userId;
+          this.resolveNames(data.players);
         }
       }),
 
@@ -357,6 +361,7 @@ export class LobbyComponent implements OnInit, OnDestroy {
       next: (data) => {
         this.lobby = data;
         this.isHost = data.hostId === this.userId;
+        this.resolveNames(data.players);
         if (!data.players.includes(this.userId)) {
           this.api.joinLobby(this.lobbyId).subscribe({
             next: () => this.loadLobby(),
@@ -403,6 +408,16 @@ export class LobbyComponent implements OnInit, OnDestroy {
       this.socket.disconnectLobby();
       this.router.navigate(['/']);
     });
+  }
+
+  private resolveNames(players: string[]) {
+    for (const p of players) {
+      if (this.playerNames[p]) continue;
+      this.profileApi.getProfileById(p).pipe(first()).subscribe({
+        next: profile => this.playerNames[p] = profile.username,
+        error: () => this.playerNames[p] = p,
+      });
+    }
   }
 
   ngOnDestroy() {

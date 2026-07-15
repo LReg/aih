@@ -86,6 +86,14 @@ function tick(gameId: string) {
   const actions = game.actionQueue.splice(0, game.actionQueue.length);
   processActions(game, actions);
   processGame(game);
+
+  for (const playerId of game.players) {
+    const alive = [...game.map.soldiers.values()].filter(e => e.ownerId === playerId).length;
+    if (alive === 0 && !game.eliminationOrder.includes(playerId) && !game.winners.includes(playerId)) {
+      game.eliminationOrder.push(playerId);
+    }
+  }
+
   const tickCalcTime = Math.round(performance.now() - tickStart - game.tickRateMs);
   const effects = game.consumeEffects();
 
@@ -98,9 +106,12 @@ function tick(gameId: string) {
 
   if (winners.length > 0) {
     game.winners = winners;
+    const remaining = game.players.filter(p => !game.eliminationOrder.includes(p) && !winners.includes(p));
+    game.eliminationOrder.push(...remaining);
+    game.eliminationOrder.push(...winners);
     game.state = 'finished';
     stopTick(game.id);
-    parentPort?.postMessage({ type: 'gameEnd', gameId: game.id, winners, state: game.toJSON() });
+    parentPort?.postMessage({ type: 'gameEnd', gameId: game.id, winners, eliminationOrder: game.eliminationOrder, state: game.toJSON() });
     setTimeout(() => {
       game.destroy();
       games.delete(game.id);
@@ -123,6 +134,7 @@ parentPort?.on('message', (msg) => {
       const config = msg.config as any;
       const game = new Game(msg.gamemode, new GameMap(config.mapWidth, config.mapHeight, msg.gameId), msg.players, new Date(), msg.gameId);
       game.config = config;
+      if (msg.playerNames) game.playerNames = msg.playerNames;
       spawnPlayers(game, config.startingSoldiers);
       game.state = 'running';
       game.tick = 0;

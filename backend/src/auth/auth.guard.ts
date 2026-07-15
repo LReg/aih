@@ -49,8 +49,10 @@ export class AuthGuard implements CanActivate {
       if (!userInfo) {
         throw new UnauthorizedException('Invalid token');
       }
+      userInfo.userId = userInfo.userId || (userInfo as any).sub;
       await this.storeUserInDB(this.db.db, userInfo);
       request.user = {
+        userId: userInfo.userId,
         email: userInfo.email,
         name: userInfo.name,
         preferredUsername: userInfo.preferredUsername,
@@ -115,6 +117,7 @@ export class AuthGuard implements CanActivate {
     });
     if (response.status !== 200) return null;
     response.data.preferredUsername = response.data.preferred_username;
+    response.data.userId = response.data.sub;
     return response.data as User;
   }
 }

@@ -227,10 +227,9 @@ export class EntityManager {
       this.dotGraphics.clear();
       this.healthbarGraphics.clear();
       for (const [id, d] of this.dots) {
-        if (!this.wasFogged(id)) {
-          this.createSprite(id, d.x, d.y, d.type, d.color, d.soldierClass);
-        }
+        this.createSprite(id, d.x, d.y, d.type, d.color, d.soldierClass);
       }
+      if (this.fogVisibleIds !== null) this.updateVisibility(this.fogVisibleIds);
     }
     perfEnd('em.checkLod');
   }
@@ -326,6 +325,7 @@ export class EntityManager {
     const key = this.textureKey(type, soldierClass);
     const tint = (((color >> 16) + 255) >> 1) << 16 | (((color >> 8) & 0xff) + 255) >> 1 << 8 | ((color & 0xff) + 255) >> 1;
     const sprite = this.pool.acquire(x, y, key, id, tint);
+    sprite.setVisible(this.fogVisibleIds === null || this.fogVisibleIds.has(id));
     this.sprites.set(id, sprite);
   }
 

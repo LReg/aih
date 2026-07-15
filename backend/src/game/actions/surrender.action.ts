@@ -11,6 +11,9 @@ export function surrenderAction(game: Game, action: QueuedAction): void {
   }
 
   game.losers.push(action.playerId);
+  if (!game.eliminationOrder.includes(action.playerId)) {
+    game.eliminationOrder.push(action.playerId);
+  }
 
   logger.log(`player=${action.playerId} surrendered, removed ${entities.length} entities`);
 }

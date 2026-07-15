@@ -1,7 +1,8 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { Router } from '@angular/router';
 import {LoginResponse, OidcSecurityService} from "angular-auth-oidc-client";
-import {BehaviorSubject, Observable, of} from "rxjs";
+import {BehaviorSubject, Observable, map, of} from "rxjs";
+import { isPlatformBrowser } from '@angular/common';
 
 const LOCAL_UUID_KEY = 'localUuid';
 const LOCAL_USERNAME_KEY = 'localUsername';
@@ -18,6 +19,7 @@ export class AuthService {
   constructor(
     private oidcSecurityService: OidcSecurityService,
     private router: Router,
+    @Inject(PLATFORM_ID) private platformId: object,
   ) {
     this.restoreLocalSession();
     this.configure();
@@ -28,22 +30,35 @@ export class AuthService {
     this.localUsername = localStorage.getItem(LOCAL_USERNAME_KEY);
     if (this.localUuid && this.localUsername) {
       this.loggedIn.next(true);
+      this.initialized.next(true);
     }
   }
 
   private configure() {
+    if (this.localUuid) return;
+
+    if (isPlatformBrowser(this.platformId)) {
+      const url = window.location.href;
+      const hasCallbackParams = url.includes('code=') || url.includes('state=');
+      console.log('[Auth] configure URL:', url, 'hasCallback:', hasCallbackParams);
+    }
+
     this.oidcSecurityService
       .checkAuth()
-      .subscribe((loginResponse: LoginResponse) => {
-        this.initialized.next(true);
-        if (loginResponse.isAuthenticated) {
-          this.loggedIn.next(true);
-          const returnUrl = sessionStorage.getItem('returnUrl');
-          if (returnUrl) {
-            sessionStorage.removeItem('returnUrl');
-            this.router.navigateByUrl(returnUrl);
+      .subscribe({
+        next: (loginResponse: LoginResponse) => {
+          console.log('[Auth] checkAuth result:', loginResponse);
+          this.initialized.next(true);
+          if (loginResponse.isAuthenticated) {
+            this.loggedIn.next(true);
+          } else if (loginResponse.errorMessage) {
+            console.warn('[Auth] checkAuth error:', loginResponse.errorMessage);
           }
-        }
+        },
+        error: (err) => {
+          console.error('[Auth] checkAuth failed:', err);
+          this.initialized.next(true);
+        },
       });
   }
 
@@ -76,9 +91,27 @@ export class AuthService {
       .subscribe((result) => console.log(result));
   }
 
+  public userId$(): Observable<string> {
+    if (this.localUuid) {
+      return of(this.localUuid);
+    }
+    return this.oidcSecurityService.getUserData().pipe(
+      map(data => (data['sub'] as string) || ''),
+    );
+  }
+
+  public username$(): Observable<string> {
+    if (this.localUuid) {
+      return of(this.localUsername || '');
+    }
+    return this.oidcSecurityService.getUserData().pipe(
+      map(data => (data['preferred_username'] as string) || (data['email'] as string) || ''),
+    );
+  }
+
   public userData$(): Observable<Record<string, unknown>> {
     if (this.localUuid) {
-      return of({ preferred_username: this.localUsername });
+      return of({ preferred_username: this.localUsername, sub: this.localUuid, userId: this.localUuid });
     }
     return this.oidcSecurityService.getUserData();
   }

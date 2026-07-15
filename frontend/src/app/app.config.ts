@@ -16,6 +16,8 @@ export const appConfig: ApplicationConfig = {
       config: {
         authority: environment.authUrl,
         redirectUrl: environment.baseUrl + '/home',
+        postLoginRoute: '/',
+        unauthorizedRoute: '/login',
         postLogoutRedirectUri: window.location.origin,
         clientId: environment.clientId,
         scope: 'openid profile email offline_access',

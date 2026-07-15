@@ -59,6 +59,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(state.id || state.gameId).emit('stateUpdate', state);
   }
 
+  broadcastElos(gameId: string, elos: Record<string, number>, eloResults: { userId: string; eloDelta: number; placement: number; username: string }[], eloGame: boolean, placementOrder: string[], playerNames: Record<string, string>) {
+    this.server.to(gameId).emit('elos', { elos, results: eloResults, eloGame, placementOrder, playerNames });
+  }
+
   broadcastStateDiff(gameId: string, diff: any) {
     this.server.to(gameId).emit('stateUpdate', diff);
   }

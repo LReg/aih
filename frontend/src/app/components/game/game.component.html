@@ -48,6 +48,34 @@
 
   <div #phaserContainer class="phaser-container"></div>
 
+  @if (showScoreboard) {
+    <div class="scoreboard-overlay">
+      <div class="scoreboard">
+        <h3>Players @if (eloGame) { <span class="sb-rated">Rated</span> } @else { <span class="sb-casual">Casual</span> }</h3>
+        <table>
+          <thead>
+            <tr><th></th><th>Player</th><th>ELO</th></tr>
+          </thead>
+          <tbody>
+            @for (p of scoreboardPlayers; track p.name) {
+              <tr>
+                <td><span class="sb-dot" [style.background]="p.color"></span></td>
+                <td>{{ p.name }} @if (p.name === userId) { <span class="sb-you">(you)</span> }</td>
+                <td>
+                  @if (p.elo !== null) {
+                    <span class="sb-elo" [style.color]="eloColor(p.elo)">{{ p.elo }}</span>
+                  } @else {
+                    <span class="sb-elo-na">-</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
   @if (showSurrenderModal) {
     <div class="modal-overlay" (click)="showSurrenderModal = false">
       <div class="modal" (click)="$event.stopPropagation()">
@@ -67,7 +95,39 @@
       <p [class.winner]="isWinner" [class.loser]="!isWinner">
         {{ isWinner ? 'You won!' : 'You lost' }}
       </p>
-      <p class="winners-list">Winners: {{ winners.join(', ') }}</p>
+      @if (eloGame && eloResults.length > 0) {
+        <table class="go-table">
+          <thead>
+            <tr><th>#</th><th>Player</th><th>ELO</th></tr>
+          </thead>
+          <tbody>
+            @for (r of eloResults; track r.userId) {
+              <tr [class.go-highlight]="r.userId === userId">
+                <td>{{ r.placement }}</td>
+                <td>{{ r.username }}</td>
+                <td [class.go-pos]="r.eloDelta > 0" [class.go-neg]="r.eloDelta < 0">
+                  {{ r.eloDelta > 0 ? '+' : '' }}{{ r.eloDelta }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      } @else {
+        <table class="go-table">
+          <thead>
+            <tr><th>#</th><th>Player</th><th></th></tr>
+          </thead>
+          <tbody>
+            @for (uid of placementOrder; track uid) {
+              <tr [class.go-highlight]="uid === userId">
+                <td>{{ placementOrder.length - $index }}</td>
+                <td>{{ playerNames[uid] || uid }}</td>
+                <td class="go-casual">Casual</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
       <button class="btn-leave" (click)="leaveGame()">Leave Game</button>
     </div>
   }
