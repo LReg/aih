@@ -1,6 +1,5 @@
-import { Controller, Post, Get, Param, Body, Req, Logger, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, Req, Logger } from '@nestjs/common';
 import { GameService } from './game.service';
-import { AuthGuard } from '../auth/auth.guard';
 import type { Request } from 'express';
 
 @Controller()
@@ -9,7 +8,6 @@ export class GameController {
 
   constructor(private gameService: GameService) {}
 
-  @UseGuards(AuthGuard)
   @Get('game/active')
   getActiveGame(@Req() req: Request): { gameId: string | null } {
     const userId = req.user?.userId || req.user?.preferredUsername || '';
