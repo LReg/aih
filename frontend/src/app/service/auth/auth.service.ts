@@ -1,15 +1,16 @@
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { Router } from '@angular/router';
-import {LoginResponse, OidcSecurityService} from "angular-auth-oidc-client";
-import {BehaviorSubject, Observable, map, of} from "rxjs";
+import { HttpClient } from '@angular/common/http';
+import { LoginResponse, OidcSecurityService } from "angular-auth-oidc-client";
+import { BehaviorSubject, Observable, of } from "rxjs";
+import { map, switchMap, catchError, shareReplay, first } from "rxjs/operators";
 import { isPlatformBrowser } from '@angular/common';
+import { environment } from '../../../environments/environment';
 
 const LOCAL_UUID_KEY = 'localUuid';
 const LOCAL_USERNAME_KEY = 'localUsername';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class AuthService {
   public initialized = new BehaviorSubject<boolean>(false);
   public loggedIn = new BehaviorSubject<boolean>(false);
@@ -19,6 +20,7 @@ export class AuthService {
   constructor(
     private oidcSecurityService: OidcSecurityService,
     private router: Router,
+    private http: HttpClient,
     @Inject(PLATFORM_ID) private platformId: object,
   ) {
     this.restoreLocalSession();
@@ -123,7 +125,14 @@ export class AuthService {
       return of(this.localUsername || '');
     }
     return this.oidcSecurityService.getUserData().pipe(
-      map(data => (data['preferred_username'] as string) || (data['email'] as string) || ''),
+      first(),
+      switchMap(() => this.http.get<{ username: string }>(`${environment.apiUrl}/profile/me`).pipe(
+        map(p => p.username),
+        catchError(() => this.oidcSecurityService.getUserData().pipe(
+          map(data => (data['preferred_username'] as string) || (data['email'] as string) || ''),
+        )),
+      )),
+      shareReplay(1),
     );
   }
 

@@ -178,10 +178,9 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.authService.userId$().pipe(first()).subscribe(userId => {
         this.socket.connectMatchmaking(userId);
       }),
-      this.authService.username$().pipe(first()).subscribe(name => {
-        this.username = name;
+      this.authService.initialized.pipe(first(isInit => isInit)).subscribe(() => {
         this.profileApi.getMyProfile().subscribe({
-          next: p => this.elo = p.elo,
+          next: p => { this.username = p.username; this.elo = p.elo; },
           error: () => this.elo = null,
         });
       }),
