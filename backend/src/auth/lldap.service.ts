@@ -112,6 +112,10 @@ export class LldapService implements OnModuleInit {
   }
 
   async setPassword(userId: string, password: string): Promise<void> {
+    if (!this.ldapUrl) {
+      this.logger.warn(`LLDAP_LDAP_URL not set — skipping password set for ${userId}`);
+      return;
+    }
     const { Client, Attribute, Change } = await import('ldapts');
     const client = new Client({ url: this.ldapUrl, timeout: 5000, connectTimeout: 5000 });
     try {
