@@ -172,7 +172,7 @@ export class AdminStatsService {
       else healthy.push(doc.gameId);
     }
 
-    const allUserIds = [...new Set(lifecycleDocs.flatMap(d => [...d.players, ...d.winners]))];
+    const allUserIds = [...new Set(lifecycleDocs.flatMap(d => [...(d.players || []), ...(d.winners || [])]))];
     let userNames: Record<string, string> = {};
     try {
       const users = await getUsersByIds(this.db.db, allUserIds);
