@@ -1,12 +1,12 @@
 import { Logger } from '@nestjs/common';
 import { Game, QueuedAction } from '../game';
 import { resolveEntities } from '../algorithms/resolveEntities';
-import { getSpreadPositions, assignTargetsByDistance } from '../algorithms/getSpreadPositions';
+import { assignTargetsByDistance } from '../algorithms/getSpreadPositions';
 import { isOverridable } from '../game-map';
 
 const logger = new Logger('WalkAction');
 
-interface WalkPayload { entityIds: string[]; x: number; y: number }
+interface WalkPayload { entityIds: string[]; x: number; y: number; positions: { x: number; y: number }[] }
 
 export function walkAction(game: Game, action: QueuedAction): void {
   const payload = action.payload as WalkPayload;
@@ -16,17 +16,11 @@ export function walkAction(game: Game, action: QueuedAction): void {
     return;
   }
 
-  const targets = getSpreadPositions(
-    payload.x, payload.y, entities.length,
-    (x, y) => game.map.isTileEmpty(x, y),
-    game.map.width, game.map.height,
-  );
-
-  const order = assignTargetsByDistance(entities, targets);
+  const order = assignTargetsByDistance(entities, payload.positions);
 
   for (let i = 0; i < entities.length; i++) {
     const e = entities[i];
-    const t = targets[order[i]] || { x: payload.x, y: payload.y };
+    const t = payload.positions[order[i]] || { x: payload.x, y: payload.y };
     e.state = { status: 'moving', targetX: t.x, targetY: t.y };
     game.map.markChanged(e.id);
     e.lastCommand = 'move';

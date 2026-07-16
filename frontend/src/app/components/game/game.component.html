@@ -40,7 +40,9 @@
       }
     </div>
     <div class="top-right">
-      @if (!gameFinished) {
+      @if (!gameFinished && soldierCount === 0) {
+        <button class="btn-surrender" (click)="leaveGame()">Home</button>
+      } @else if (!gameFinished) {
         <button class="btn-surrender" (click)="showSurrenderModal = true">Give Up</button>
       }
     </div>

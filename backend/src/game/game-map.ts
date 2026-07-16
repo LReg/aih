@@ -49,9 +49,9 @@ export interface Entity {
 }
 
 export const CLASS_STATS: Record<string, { hp: number; damage: number }> = {
-  soldier: { hp: 100, damage: 30 },
-  archer: { hp: 75, damage: 20 },
-  tank: { hp: 350, damage: 10 },
+  soldier: { hp: 100, damage: 25 },
+  archer: { hp: 50, damage: 15 },
+  tank: { hp: 450, damage: 15 },
 };
 
 const BARRACKS_HP = 500;

@@ -10,6 +10,9 @@ export interface GameSceneAPI {
   setSelectedIds(v: Set<string>): void;
   playerId(): string;
   targetingAction(): 'walk' | 'attack' | null;
+  formationWidth(): number;
+  setFormationWidth(w: number): void;
+  selectedSoldierCount(): number;
   overlays: OverlayRenderer;
   entityAt(tileX: number, tileY: number): Entity | null;
   entitiesInRect(wxMin: number, wyMin: number, wxMax: number, wyMax: number): Entity[];
@@ -17,7 +20,7 @@ export interface GameSceneAPI {
   updateHighlights(): void;
   cancelTargeting(): void;
   onSelectionChanged: Subject<string[]>;
-  onActionRequest: Subject<{ action: string; entityIds: string[]; x: number; y: number }>;
+  onActionRequest: Subject<{ action: string; entityIds: string[]; x: number; y: number; width: number; positions: { x: number; y: number }[] }>;
   onTargetingChanged: Subject<'walk' | 'attack' | null>;
 }
 
@@ -52,6 +55,39 @@ export class InputHandler {
     this.scene.input.on('pointerup', () => this.onPointerUp());
 
     this.scene.input.on('wheel', (_pointer: unknown, _gos: unknown, _dx: number, dy: number) => {
+      if (this.api.targetingAction()) {
+        const ptr = this.scene.input.activePointer;
+        const tileX = Math.floor(ptr.worldX / TILE_SIZE);
+        const tileY = Math.floor(ptr.worldY / TILE_SIZE);
+        const curFormation = this.api.getSpreadPreview(tileX, tileY);
+        const curKey = curFormation.map(p => `${p.x},${p.y}`).join('|');
+        const maxWidth = Math.max(1, curFormation.length);
+        if (this.api.formationWidth() > maxWidth) {
+          this.api.setFormationWidth(maxWidth);
+        }
+        const cur = this.api.formationWidth();
+        const step = dy > 0 ? 1 : -1;
+        let next = cur + step;
+        let found: { x: number; y: number }[] | null = null;
+        while (next >= 1 && next <= maxWidth) {
+          this.api.setFormationWidth(next);
+          const test = this.api.getSpreadPreview(tileX, tileY);
+          if (test.map(p => `${p.x},${p.y}`).join('|') !== curKey) {
+            found = test;
+            break;
+          }
+          next += step;
+        }
+        if (found) {
+          const color = this.api.targetingAction() === 'attack' ? 0xff3333 : 0x33ff33;
+          this.api.overlays.drawSpreadPreview(found, color);
+          const action = this.api.targetingAction();
+          this.api.overlays.showTargetingLabel(action === 'walk' ? 'Move' : 'Attack' + ` (W:${next})`);
+        } else {
+          this.api.setFormationWidth(cur);
+        }
+        return;
+      }
       const cam = this.scene.cameras.main;
       const factor = 0.001;
       const newZoom = Phaser.Math.Clamp(cam.zoom * (1 - dy * factor), 0.1, 6);
@@ -244,7 +280,8 @@ export class InputHandler {
       return;
     }
 
-    this.api.onActionRequest.next({ action: this.api.targetingAction()!, entityIds, x: tileX, y: tileY });
+    const positions = this.api.getSpreadPreview(tileX, tileY);
+    this.api.onActionRequest.next({ action: this.api.targetingAction()!, entityIds, x: tileX, y: tileY, width: this.api.formationWidth(), positions });
     this.api.cancelTargeting();
   }
 

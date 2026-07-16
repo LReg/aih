@@ -11,7 +11,7 @@ import { perfStart, perfEnd, perfInit, perfFrame } from './perf';
 export class GameScene extends Phaser.Scene {
   readonly overlays = new OverlayRenderer(this);
   readonly onSelectionChanged = new Subject<string[]>();
-  readonly onActionRequest = new Subject<{ action: string; entityIds: string[]; x: number; y: number }>();
+  readonly onActionRequest = new Subject<{ action: string; entityIds: string[]; x: number; y: number; width: number; positions: { x: number; y: number }[] }>();
   readonly onTargetingChanged = new Subject<'walk' | 'attack' | null>();
 
   private entityManager!: EntityManager;
@@ -27,6 +27,7 @@ export class GameScene extends Phaser.Scene {
   selectedIds = new Set<string>();
   playerId = '';
   targetingAction: 'walk' | 'attack' | null = null;
+  formationWidth = 2;
 
   private entitiesMap = new Map<string, Entity>();
   private entitySpatialMap = new Map<string, string>();
@@ -80,6 +81,16 @@ export class GameScene extends Phaser.Scene {
 
   get selectedEntityIds(): string[] { return [...this.selectedIds]; }
   get isTargeting(): boolean { return this.targetingAction !== null; }
+  getFormationWidth(): number { return this.formationWidth; }
+  setFormationWidth(w: number) { this.formationWidth = w; }
+  getSelectedSoldierCount(): number {
+    let count = 0;
+    for (const id of this.selectedIds) {
+      const e = this.entitiesMap.get(id);
+      if (e && e.type === 'soldier' && isOverridable(e.state.status)) count++;
+    }
+    return count;
+  }
   getGameState(): GameState | null { return this.gameState; }
 
   get entityCount(): number { return this.entitiesMap.size; }
@@ -141,6 +152,9 @@ export class GameScene extends Phaser.Scene {
       setSelectedIds: (v) => { this.selectedIds = v; },
       playerId: () => this.playerId,
       targetingAction: () => this.targetingAction,
+      formationWidth: () => this.formationWidth,
+      setFormationWidth: (w) => { this.formationWidth = w; },
+      selectedSoldierCount: () => this.getSelectedSoldierCount(),
       overlays: this.overlays,
       onSelectionChanged: this.onSelectionChanged,
       onActionRequest: this.onActionRequest,
@@ -285,16 +299,22 @@ export class GameScene extends Phaser.Scene {
     if (count === 0) return [];
 
     const isAvailable = (x: number, y: number) => {
+      const terrain = this.tileLookup?.[x]?.[y];
+      if (terrain === TileType.Wall) return false;
+      if (this.targetingAction === 'walk') {
+        const id = this.entitySpatialMap.get(`${x},${y}`);
+        if (!id) return true;
+        if (this.darknessRange > 0 && !this.fogVisibleIds.has(id)) return true;
+        return false;
+      }
       const id = this.entitySpatialMap.get(`${x},${y}`);
       if (!id) return true;
       const e = this.entitiesMap.get(id);
-      if (!e || e.ownerId === this.playerId) return false;
-      if (this.darknessRange > 0 && !this.fogVisibleIds.has(id)) return true;
-      if (this.targetingAction === 'walk') return false;
+      if (e && e.ownerId === this.playerId) return false;
       return true;
     };
 
-    return getSpreadPositions(tileX, tileY, count, isAvailable, this.gameState.map.width, this.gameState.map.height);
+    return getSpreadPositions(tileX, tileY, count, isAvailable, this.gameState.map.width, this.gameState.map.height, this.formationWidth);
   }
 
   private centerOnPlayer() {

@@ -382,9 +382,9 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  private submitAction(req: { action: string; entityIds: string[]; x: number; y: number }) {
+  private submitAction(req: { action: string; entityIds: string[]; x: number; y: number; width: number; positions: { x: number; y: number }[] }) {
     this.api.submitAction(this.gameId, req.action, {
-      entityIds: req.entityIds, x: req.x, y: req.y,
+      entityIds: req.entityIds, x: req.x, y: req.y, width: req.width, positions: req.positions,
     }).subscribe();
     this.gameScene.cancelSelection();
   }
@@ -451,7 +451,6 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   surrender() {
     this.showSurrenderModal = false;
     this.api.submitAction(this.gameId, 'surrender', {}).subscribe();
-    this.router.navigate(['/']);
   }
 
   leaveGame() { this.router.navigate(['/']); }

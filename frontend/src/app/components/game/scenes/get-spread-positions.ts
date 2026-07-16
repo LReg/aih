@@ -1,3 +1,7 @@
+const BLOCK_SIZE = 2;
+const STRIDE = BLOCK_SIZE + 1;
+const BLOCK_CAPACITY = BLOCK_SIZE * BLOCK_SIZE;
+
 export function getSpreadPositions(
   centerX: number,
   centerY: number,
@@ -5,76 +9,32 @@ export function getSpreadPositions(
   isAvailable: (x: number, y: number) => boolean,
   maxW: number,
   maxH: number,
+  formationWidth: number = 2,
 ): { x: number; y: number }[] {
   const result: { x: number; y: number }[] = [];
   if (count <= 0) return result;
 
-  const taken = new Set<string>();
+  const blocksDeep = Math.max(1, Math.ceil(count / (formationWidth * BLOCK_CAPACITY)));
 
-  function add(x: number, y: number): boolean {
-    const k = `${x},${y}`;
-    if (taken.has(k)) return false;
-    taken.add(k);
-    result.push({ x, y });
-    return true;
-  }
+  for (let by = 0; by < blocksDeep; by++) {
+    for (let bx = 0; bx < formationWidth; bx++) {
+      if (result.length >= count) break;
+      const originX = centerX + bx * STRIDE;
+      const originY = centerY + by * STRIDE;
 
-  if (isAvailable(centerX, centerY)) {
-    add(centerX, centerY);
-  }
-  if (result.length >= count) return result;
-
-  const BLOCK_COLS = 2;
-  const BLOCK_ROWS = 3;
-  const STRIDE_COL = BLOCK_COLS + 1;
-  const STRIDE_ROW = BLOCK_ROWS + 1;
-
-  const startX = Math.max(0, Math.min(centerX - 1, maxW - BLOCK_COLS));
-  const startY = Math.max(0, Math.min(centerY - 3, maxH - BLOCK_ROWS));
-
-  for (let layer = 0; layer <= 50; layer++) {
-    let blocksAdded = 0;
-
-    for (let bx = -layer; bx <= layer; bx++) {
-      for (let by = -layer; by <= layer; by++) {
-        if (Math.abs(bx) !== layer && Math.abs(by) !== layer) continue;
-
-        const baseX = startX + bx * STRIDE_COL;
-        const baseY = startY + by * STRIDE_ROW;
-
-        let blockValid = true;
-        for (let c = 0; c < BLOCK_COLS && blockValid; c++) {
-          for (let r = 0; r < BLOCK_ROWS && blockValid; r++) {
-            const nx = baseX + c;
-            const ny = baseY + r;
-            if (nx < 0 || nx >= maxW || ny < 0 || ny >= maxH) { blockValid = false; break; }
-            if (result.length > 0 && nx === centerX && ny === centerY) continue;
-            if (!isAvailable(nx, ny)) { blockValid = false; break; }
-          }
-        }
-
-        if (!blockValid) continue;
-        blocksAdded++;
-        if (result.length >= count) return result;
-
-        for (let c = 0; c < BLOCK_COLS; c++) {
-          for (let r = 0; r < BLOCK_ROWS; r++) {
-            const nx = baseX + c;
-            const ny = baseY + r;
-            if (result.length > 0 && nx === centerX && ny === centerY) continue;
-            add(nx, ny);
-            if (result.length >= count) return result;
-          }
-        }
+      for (const [ox, oy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+        if (result.length >= count) break;
+        const nx = originX + ox;
+        const ny = originY + oy;
+        if (nx < 0 || nx >= maxW || ny < 0 || ny >= maxH) continue;
+        if (!isAvailable(nx, ny)) continue;
+        result.push({ x: nx, y: ny });
       }
-    }
-
-    if (blocksAdded === 0 && layer > 3) {
-      break;
     }
   }
 
   if (result.length < count) {
+    const taken = new Set(result.map(p => `${p.x},${p.y}`));
     const maxRadius = Math.max(maxW, maxH);
     for (let r = 1; r <= maxRadius && result.length < count; r++) {
       for (let dx = -r; dx <= r; dx++) {
@@ -85,7 +45,8 @@ export function getSpreadPositions(
           if (nx < 0 || nx >= maxW || ny < 0 || ny >= maxH) continue;
           if (taken.has(`${nx},${ny}`)) continue;
           if (!isAvailable(nx, ny)) continue;
-          add(nx, ny);
+          taken.add(`${nx},${ny}`);
+          result.push({ x: nx, y: ny });
           if (result.length >= count) return result;
         }
       }

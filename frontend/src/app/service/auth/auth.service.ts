@@ -64,6 +64,13 @@ export class AuthService {
           this.initialized.next(true);
           if (loginResponse.isAuthenticated) {
             this.loggedIn.next(true);
+            if (isBrowser) {
+              const returnUrl = sessionStorage.getItem('returnUrl');
+              if (returnUrl) {
+                sessionStorage.removeItem('returnUrl');
+                this.router.navigateByUrl(returnUrl);
+              }
+            }
           } else if (loginResponse.errorMessage) {
             console.warn('[Auth] checkAuth error:', loginResponse.errorMessage);
             if (isBrowser && (window.location.href.includes('?error=') || window.location.href.includes('&error='))) {
