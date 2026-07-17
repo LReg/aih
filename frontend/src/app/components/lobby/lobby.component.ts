@@ -160,6 +160,15 @@ import { environment } from '../../../environments/environment';
                 <span class="setting-val">{{ lobby?.settings?.soldierProductionTime }}</span>
               }
             </div>
+            <div class="setting-field">
+              <label>Mid Soldier Count</label>
+              @if (isHost) {
+                <input type="number" min="1" max="10000" [value]="lobby?.settings?.midSoldierCount"
+                  (change)="updateSetting('midSoldierCount', +$any($event.target).value)" />
+              } @else {
+                <span class="setting-val">{{ lobby?.settings?.midSoldierCount }}</span>
+              }
+            </div>
           </div>
         </section>
 

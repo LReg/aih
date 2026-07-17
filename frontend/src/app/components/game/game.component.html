@@ -19,6 +19,10 @@
         <img src="/assets/soldiers.png" class="asset-icon" />
         <span class="info-val">{{ soldierCount }}</span>
       </div>
+      <div class="info-box prod-box" title="Production multiplier">
+        <span class="info-icon">&#9889;</span>
+        <span class="info-val" [class.prod-up]="productionMultiplier > 1" [class.prod-down]="productionMultiplier < 1">&times;{{ productionMultiplierStr }}</span>
+      </div>
       <div class="info-box tick-box" (click)="toggleTickInfo()">
         <span class="info-icon">&#9201;</span>
         <span class="info-val">{{ gameTick }}</span>

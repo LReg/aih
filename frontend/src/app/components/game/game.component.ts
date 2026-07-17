@@ -50,6 +50,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   placementOrder: string[] = [];
   gameTick = 0;
   elapsedTime = '00:00';
+  productionMultiplier = 1;
   playerName = '';
   playerColor = '#ccc';
   showTickInfo = false;
@@ -83,6 +84,10 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     return m;
   }
   sign(n: number): string { return n >= 0 ? '+' : ''; }
+
+  get productionMultiplierStr(): string {
+    return this.productionMultiplier.toFixed(2);
+  }
 
   get selectedSoldiers(): number {
     return this.selectedEntities.filter(e => e.type === 'soldier').length;
@@ -300,6 +305,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     this.gameScene.updateFromState(state);
     this.barracksCount = this.gameScene.countPlayerBarracks(this.userId);
     this.soldierCount = this.gameScene.countPlayerSoldiers(this.userId);
+    this.productionMultiplier = state.productionMultipliers?.[this.userId] ?? 1;
 
     if (state.state === 'finished') {
       this.gameFinished = true;
@@ -321,6 +327,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     this.playerNames = state.playerNames || {};
     this.barracksCount = this.gameScene.countPlayerBarracks(this.userId);
     this.soldierCount = this.gameScene.countPlayerSoldiers(this.userId);
+    this.productionMultiplier = state.productionMultipliers?.[this.userId] ?? 1;
 
     if (state.players && this.scoreboardPlayers.length === 0) {
       this.buildScoreboard(state.players, state.playerColors, state.playerNames);
@@ -345,6 +352,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
       this.gameScene.updateFromState(state);
       this.barracksCount = this.gameScene.countPlayerBarracks(this.userId);
       this.soldierCount = this.gameScene.countPlayerSoldiers(this.userId);
+      this.productionMultiplier = state.productionMultipliers?.[this.userId] ?? 1;
     }
   }
 
@@ -354,6 +362,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     this.gameScene.updateFromState(diff);
     this.barracksCount = this.gameScene.countPlayerBarracks(this.userId);
     this.soldierCount = this.gameScene.countPlayerSoldiers(this.userId);
+    this.productionMultiplier = diff.productionMultipliers?.[this.userId] ?? 1;
   }
 
   private formatElapsed(startedAt: number): string {
@@ -470,7 +479,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
 
   private buildScoreboard(players: string[], playerColors: Record<string, string>, playerNames?: Record<string, string>) {
     for (const userId of players) {
-      const sub = this.profileApi.getProfile(userId).pipe(first()).subscribe({
+        const sub = this.profileApi.getProfileById(userId).pipe(first()).subscribe({
         next: p => {
           const name = playerNames?.[userId] || userId;
           const existing = this.scoreboardPlayers.find(sp => sp.name === name);

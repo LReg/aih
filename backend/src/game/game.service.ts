@@ -216,7 +216,7 @@ export class GameService implements OnModuleDestroy {
     const game = this.gameDao.getGame(gameId);
     if (!game || !game.players || !this.db.db) return { eloGame: false };
     const users = await getUsersByIds(this.db.db, game.players);
-    const eloCount = users.filter(u => u.userId && !u.localAuth).length;
+    const eloCount = users.filter(u => u.userId && !u.email?.endsWith('@local')).length;
     return { eloGame: eloCount >= 2 };
   }
 

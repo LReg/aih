@@ -3,6 +3,17 @@ import { GameMap, Entity, TileType } from './game-map';
 import { Gamemode } from './gamemode.config';
 import type { GamemodeConfig } from './gamemode.config';
 
+export const PROD_MULT_MAX = 3.0;
+export const PROD_MULT_MIN = 0.40
+
+export function productionMultiplier(soldierCount: number, mid: number): number {
+  const ratio = (mid - soldierCount) / mid;
+  const mult = ratio >= 0
+    ? 1 + ratio * (PROD_MULT_MAX - 1)
+    : 1 + ratio * (1 - PROD_MULT_MIN);
+  return Math.min(PROD_MULT_MAX, Math.max(PROD_MULT_MIN, mult));
+}
+
 export type GameState = 'waiting' | 'countdown' | 'running' | 'finished';
 
 export interface QueuedAction {
@@ -93,6 +104,18 @@ export class Game {
     return eff;
   }
 
+  getProductionMultipliers(): Record<string, number> {
+    const result: Record<string, number> = {};
+    const counts = new Map<string, number>();
+    for (const e of this.map.soldiers.values()) {
+      counts.set(e.ownerId, (counts.get(e.ownerId) || 0) + 1);
+    }
+    for (const playerId of this.players) {
+      result[playerId] = productionMultiplier(counts.get(playerId) || 0, this.config.midSoldierCount);
+    }
+    return result;
+  }
+
   toJSON() {
     return {
       id: this.id,
@@ -119,6 +142,7 @@ export class Game {
       losers: this.losers,
       eliminationOrder: this.eliminationOrder,
       createdAt: this.createdAt,
+      productionMultipliers: this.getProductionMultipliers(),
     };
   }
 
@@ -135,6 +159,7 @@ export class Game {
       diff: true as const,
       changed,
       removed,
+      productionMultipliers: this.getProductionMultipliers(),
     };
   }
 }

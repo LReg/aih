@@ -42,6 +42,7 @@ export interface GamemodeConfig {
   maxBarracks: number;
   darknessRange: number;
   winCondition: WinCondition;
+  midSoldierCount: number;
 }
 
 const DEFAULT_WIN_CONDITION = composeWinConditions(
@@ -71,6 +72,7 @@ export const GAMEMODE_CONFIGS: Record<string, GamemodeConfig> = {
     maxBarracks: 15,
     darknessRange: 10,
     winCondition: DEFAULT_WIN_CONDITION,
+    midSoldierCount: 200,
   },
   [Gamemode.Massive]: {
     maxPlayers: 10,
@@ -93,6 +95,7 @@ export const GAMEMODE_CONFIGS: Record<string, GamemodeConfig> = {
     maxBarracks: 15,
     darknessRange: 10,
     winCondition: DEFAULT_WIN_CONDITION,
+    midSoldierCount: 200,
   },
   [Gamemode.Slow]: {
     maxPlayers: 5,
@@ -115,6 +118,7 @@ export const GAMEMODE_CONFIGS: Record<string, GamemodeConfig> = {
     maxBarracks: 15,
     darknessRange: 10,
     winCondition: DEFAULT_WIN_CONDITION,
+    midSoldierCount: 200,
   },
   [Gamemode.Test]: {
     maxPlayers: 5,
@@ -137,5 +141,6 @@ export const GAMEMODE_CONFIGS: Record<string, GamemodeConfig> = {
     maxBarracks: 15,
     darknessRange: 10,
     winCondition: DEFAULT_WIN_CONDITION,
+    midSoldierCount: 200,
   },
 };

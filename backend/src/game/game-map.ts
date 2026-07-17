@@ -49,7 +49,7 @@ export interface Entity {
 }
 
 export const CLASS_STATS: Record<string, { hp: number; damage: number }> = {
-  soldier: { hp: 100, damage: 25 },
+  soldier: { hp: 100, damage: 40 },
   archer: { hp: 50, damage: 15 },
   tank: { hp: 450, damage: 15 },
 };

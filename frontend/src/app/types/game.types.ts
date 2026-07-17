@@ -80,6 +80,7 @@ export interface GameState {
   losers: string[];
   createdAt: string;
   effects?: Effect[];
+  productionMultipliers: Record<string, number>;
 }
 
 export interface GameStateDiff {
@@ -89,6 +90,7 @@ export interface GameStateDiff {
   removed: string[];
   tickCalcTime?: number;
   effects?: Effect[];
+  productionMultipliers: Record<string, number>;
 }
 
 export type StateUpdate = GameState | GameStateDiff;
@@ -122,6 +124,7 @@ export interface LobbySettings {
   darknessRange: number;
   barracksBuildTime: number;
   soldierProductionTime: number;
+  midSoldierCount: number;
 }
 
 export interface LobbyData {

@@ -76,6 +76,7 @@ export class LobbyService {
     darknessRange: { min: 0, max: 100 },
     barracksBuildTime: { min: 1, max: 1000 },
     soldierProductionTime: { min: 1, max: 1000 },
+    midSoldierCount: { min: 1, max: 10000 },
   };
 
   updateSettings(id: string, userId: string, settings: Partial<LobbySettings>): Lobby {
@@ -114,6 +115,7 @@ export class LobbyService {
     baseConfig.darknessRange = lobby.settings.darknessRange;
     baseConfig.barracksBuildTime = lobby.settings.barracksBuildTime;
     baseConfig.soldierProductionTime = lobby.settings.soldierProductionTime;
+    baseConfig.midSoldierCount = lobby.settings.midSoldierCount;
 
     const gameId = this.gameService.launchGame(lobby.players, lobby.settings.gamemode, baseConfig);
     this.lobbyGateway.broadcastLobbyStarted(lobby, gameId);
