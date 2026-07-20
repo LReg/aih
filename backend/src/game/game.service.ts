@@ -86,11 +86,15 @@ export class GameService implements OnModuleDestroy {
   launchGame(players: string[], gamemode: Gamemode, config: GamemodeConfig): string {
     const gameId = randomUUID();
     const { winCondition, ...configClone } = config;
-    this.loadPlayerNames(players).then(names => {
-      this.worker.postMessage({ type: 'init', gameId, players, gamemode, config: configClone, playerNames: names });
-    }).catch(() => {
+    if (players.length === 0) {
       this.worker.postMessage({ type: 'init', gameId, players, gamemode, config: configClone });
-    });
+    } else {
+      this.loadPlayerNames(players).then(names => {
+        this.worker.postMessage({ type: 'init', gameId, players, gamemode, config: configClone, playerNames: names });
+      }).catch(() => {
+        this.worker.postMessage({ type: 'init', gameId, players, gamemode, config: configClone });
+      });
+    }
     return gameId;
   }
 
@@ -102,6 +106,19 @@ export class GameService implements OnModuleDestroy {
       if (u.userId) names[u.userId] = u.preferredUsername || u.userId;
     }
     return names;
+  }
+
+  addPlayerToGame(gameId: string, playerId: string, playerName?: string): void {
+    const game = this.gameDao.getGame(gameId);
+    if (game) {
+      if (!game.players) game.players = [];
+      if (!game.players.includes(playerId)) game.players.push(playerId);
+    }
+    this.worker.postMessage({ type: 'addPlayer', gameId, playerId, playerName });
+  }
+
+  stopGame(gameId: string): void {
+    this.worker.postMessage({ type: 'stop', gameId });
   }
 
   queueAction(
@@ -120,7 +137,11 @@ export class GameService implements OnModuleDestroy {
   getActiveGame(userId: string): string | null {
     const games = this.gameDao.getAllGames();
     for (const game of games) {
-      if (game.players?.includes(userId) && game.state !== 'finished') return game.gameId || game.id;
+      if (!game.players?.includes(userId)) continue;
+      if (game.state === 'finished') continue;
+      if (game.eliminationOrder?.includes(userId)) continue;
+      if (game.gamemode)
+      return game.gameId || game.id;
     }
     return null;
   }

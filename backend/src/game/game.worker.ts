@@ -1,7 +1,7 @@
 import { parentPort } from 'worker_threads';
 import { Game } from './game';
 import { GameMap, createSoldier } from './game-map';
-import { GAMEMODE_CONFIGS } from './gamemode.config';
+import { Gamemode, GAMEMODE_CONFIGS } from './gamemode.config';
 import type { GamemodeConfig } from './gamemode.config';
 import { processActions, queueGameAction } from './actions/actions';
 import { processGame } from './processing/processing';
@@ -83,13 +83,27 @@ function tick(gameId: string) {
   const tickStart = performance.now();
   game.tick++;
   game.effects = [];
+  const prevPlayerCount = game.players.length;
   const actions = game.actionQueue.splice(0, game.actionQueue.length);
   processActions(game, actions);
   processGame(game);
+  const playersChanged = game.players.length !== prevPlayerCount;
 
+  if (game.players.length === 0) {
+    game.state = 'finished';
+    stopTick(game.id);
+    parentPort?.postMessage({ type: 'gameEnd', gameId: game.id, winners: [], eliminationOrder: game.eliminationOrder, state: game.toJSON() });
+    setTimeout(() => {
+      game.destroy();
+      games.delete(game.id);
+    }, CLEANUP_DELAY_MS);
+    return;
+  }
+
+  const config = GAMEMODE_CONFIGS[game.gamemode];
   for (const playerId of game.players) {
     const alive = [...game.map.soldiers.values()].filter(e => e.ownerId === playerId).length;
-    if (alive === 0 && !game.eliminationOrder.includes(playerId) && !game.winners.includes(playerId)) {
+    if (alive === 0 && !game.eliminationOrder.includes(playerId) && !game.winners.includes(playerId) && !(game.gamemode === Gamemode.World)) {
       game.eliminationOrder.push(playerId);
     }
   }
@@ -97,10 +111,9 @@ function tick(gameId: string) {
   const tickCalcTime = Math.round(performance.now() - tickStart - game.tickRateMs);
   const effects = game.consumeEffects();
 
-  const config = GAMEMODE_CONFIGS[game.gamemode];
   let winners: string[] = [];
 
-  if (game.tick > 10) {
+  if (game.tick > 10 && config) {
     winners = config.winCondition(game);
   }
 
@@ -122,8 +135,8 @@ function tick(gameId: string) {
   // Every tick: send diff (mutable objects -> JSON string to avoid structured clone)
   parentPort?.postMessage({ type: 'stateDiff', gameId: game.id, diff: game.toDiffJSON(), tickCalcTime, effects });
 
-  // First 10 ticks + every 10th thereafter: send full state for client verification
-  if (game.tick <= 10 || game.tick % 10 === 0) {
+  // Full state on player change (World-mode surrender) + first 10 ticks + every 10th
+  if (playersChanged || game.tick <= 10 || game.tick % 10 === 0) {
     parentPort?.postMessage({ type: 'stateUpdate', gameId: game.id, state: game.toJSON(), tickCalcTime, effects });
   }
 }
@@ -135,7 +148,7 @@ parentPort?.on('message', (msg) => {
       const game = new Game(msg.gamemode, new GameMap(config.mapWidth, config.mapHeight, msg.gameId), msg.players, new Date(), msg.gameId);
       game.config = config;
       if (msg.playerNames) game.playerNames = msg.playerNames;
-      spawnPlayers(game, config.startingSoldiers);
+      if (msg.players.length > 0) spawnPlayers(game, config.startingSoldiers);
       game.state = 'running';
       game.tick = 0;
       game.startedAt = Date.now();
@@ -160,6 +173,41 @@ parentPort?.on('message', (msg) => {
         game.destroy();
         games.delete(msg.gameId);
       }
+      break;
+    }
+    case 'addPlayer': {
+      const game = games.get(msg.gameId);
+      if (!game || game.state !== 'running') return;
+      const playerId = msg.playerId;
+
+      const isNew = !game.players.includes(playerId);
+      const isRejoin = game.eliminationOrder.includes(playerId);
+
+      if (!isNew && !isRejoin) return;
+
+      if (isRejoin) {
+        const idx = game.eliminationOrder.indexOf(playerId);
+        if (idx >= 0) game.eliminationOrder.splice(idx, 1);
+      }
+
+      if (game.players.length > 0) {
+        const pos = game.map.findSafeSpawnPosition(game.players);
+        if (pos) {
+          spawnCluster(game, playerId, pos.x, pos.y, game.config.startingSoldiers);
+        } else {
+          const cx = Math.floor(game.map.width / 2);
+          const cy = Math.floor(game.map.height / 2);
+          spawnCluster(game, playerId, cx, cy, game.config.startingSoldiers);
+        }
+      } else {
+        const cx = Math.floor(game.map.width / 2);
+        const cy = Math.floor(game.map.height / 2);
+        spawnCluster(game, playerId, cx, cy, game.config.startingSoldiers);
+      }
+
+      if (isNew) game.addPlayer(playerId, msg.playerName);
+      else if (msg.playerName) game.playerNames[playerId] = msg.playerName;
+      parentPort?.postMessage({ type: 'stateUpdate', gameId: game.id, state: game.toJSON(), tickCalcTime: 0, effects: [] });
       break;
     }
     case 'getState': {

@@ -46,6 +46,42 @@ import { environment } from '../../../environments/environment';
       <section class="content">
         <button class="create-lobby-btn" (click)="createLobby()">+ Create Lobby</button>
 
+        <div class="world-card" (click)="joinWorld()">
+          <div class="world-glow"></div>
+          <div class="world-inner">
+            <div class="world-icon-row">
+              <div class="world-icon"><span class="world-icon-text">W</span></div>
+              <span class="world-badge">BETA</span>
+            </div>
+            <div class="world-player-badge">
+              <span class="world-player-dot"></span>
+              <span>{{ worldPlayers }}</span>
+            </div>
+            <div class="world-info">
+              <div class="world-label">World Mode</div>
+              <div class="world-desc">Jump in anytime &mdash; a living map where players come and go. Build, fight, rise, repeat</div>
+            </div>
+            <div class="world-divider"></div>
+            <div class="world-stats">
+              <div class="world-stat">
+                <span class="world-stat-value">500×500</span>
+                <span class="world-stat-label">Map</span>
+              </div>
+              <div class="world-stat-sep"></div>
+              <div class="world-stat">
+                <span class="world-stat-value">20</span>
+                <span class="world-stat-label">Players</span>
+              </div>
+              <div class="world-stat-sep"></div>
+              <div class="world-stat">
+                <span class="world-stat-value">1s</span>
+                <span class="world-stat-label">Tick</span>
+              </div>
+            </div>
+            <div class="world-action">JOIN WORLD</div>
+          </div>
+        </div>
+
         <app-gamemode-select
           [state]="getQueueState('casual')" [config]="casualConfig"
           label="Casual" gamemode="casual" [queueCount]="queueCounts['casual'] || 0"
@@ -124,6 +160,87 @@ import { environment } from '../../../environments/environment';
       text-align: center; cursor: pointer; transition: background .15s;
     }
     .active-game-banner:hover { background: color-mix(in srgb, var(--accent, #3b82f6) 22%, transparent); }
+    .world-card {
+      position: relative;
+      border-radius: 14px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .world-card:hover { transform: translateY(-2px); }
+    .world-glow {
+      position: absolute;
+      inset: -2px;
+      background: conic-gradient(from 0deg, #a78bfa, #60a5fa, #34d399, #a78bfa);
+      animation: worldSpin 4s linear infinite;
+    }
+    @keyframes worldSpin { to { rotate: 360deg; } }
+    .world-inner {
+      position: relative;
+      margin: 2px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(15,23,42,.96), rgba(30,41,59,.96));
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .world-player-badge {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px 3px 8px;
+      border-radius: 20px;
+      background: rgba(52,211,153,.12);
+      color: #34d399;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .world-player-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #34d399;
+      animation: worldPulse 2s ease-in-out infinite;
+    }
+    @keyframes worldPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .35; }
+    }
+    .world-icon-row { display: flex; align-items: center; gap: 10px; }
+    .world-icon {
+      width: 46px; height: 46px; border-radius: 12px;
+      background: linear-gradient(135deg, #a78bfa, #7c3aed);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 0 20px rgba(124,58,237,.4);
+    }
+    .world-icon-text { color: #fff; font-size: 22px; font-weight: 800; }
+    .world-badge {
+      padding: 2px 10px; border-radius: 4px;
+      background: rgba(167,139,250,.15); color: #a78bfa;
+      font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+    }
+    .world-info { flex: 1; min-width: 0; }
+    .world-label { font-weight: 700; font-size: 18px; color: #f1f5f9; letter-spacing: -.3px; }
+    .world-desc { font-size: 13px; color: #94a3b8; margin-top: 3px; line-height: 1.4; }
+    .world-divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(167,139,250,.3), transparent); }
+    .world-stats { display: flex; align-items: center; justify-content: center; gap: 0; padding: 2px 0; }
+    .world-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; }
+    .world-stat-value { font-size: 16px; font-weight: 700; color: #e2e8f0; }
+    .world-stat-label { font-size: 10px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
+    .world-stat-sep { width: 1px; height: 28px; background: rgba(167,139,250,.15); }
+    .world-action {
+      padding: 12px; border-radius: 8px; border: none;
+      background: linear-gradient(135deg, #a78bfa, #7c3aed);
+      color: #fff; font-weight: 700; font-size: 14px; letter-spacing: .5px;
+      text-align: center; cursor: pointer;
+      transition: opacity .15s, box-shadow .2s;
+      box-shadow: 0 0 16px rgba(124,58,237,.25);
+    }
+    .world-action:hover { opacity: .92; box-shadow: 0 0 24px rgba(124,58,237,.45); }
     .content {
       display: flex;
       flex-direction: column;
@@ -142,6 +259,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   countdownMaxPlayers = 0;
   queueCounts: Record<string, number> = {};
   activeGameId: string | null = null;
+  worldPlayers = 0;
+  private worldStatusInterval: ReturnType<typeof setInterval> | null = null;
   casualConfig: GamemodeConfig = { maxPlayers: 5, mapWidth: 150, mapHeight: 150, tickRateMs: 1000 };
   massiveConfig: GamemodeConfig = { maxPlayers: 10, mapWidth: 400, mapHeight: 400, tickRateMs: 1000 };
   slowConfig: GamemodeConfig = { maxPlayers: 5, mapWidth: 100, mapHeight: 100, tickRateMs: 1500 };
@@ -212,6 +331,13 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.queueCounts = counts;
       }),
     );
+
+    this.fetchWorldStatus();
+    this.worldStatusInterval = setInterval(() => this.fetchWorldStatus(), 15000);
+  }
+
+  private fetchWorldStatus() {
+    this.api.getWorldStatus().subscribe(s => this.worldPlayers = s.activePlayers);
   }
 
   joinQueue(gamemode: string) {
@@ -244,6 +370,12 @@ export class HomeComponent implements OnInit, OnDestroy {
     if (this.activeGameId) this.router.navigate(['/game', this.activeGameId]);
   }
 
+  joinWorld() {
+    this.api.worldJoin().subscribe(res => {
+      this.router.navigate(['/game', res.gameId]);
+    });
+  }
+
   createLobby() {
     this.api.createLobby().subscribe(res => {
       this.router.navigate(['/lobby', res.lobbyId]);
@@ -256,6 +388,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    if (this.worldStatusInterval) clearInterval(this.worldStatusInterval);
     this.socket.disconnectMatchmaking();
     this.subs.forEach(s => s.unsubscribe());
   }

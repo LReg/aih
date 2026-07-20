@@ -7,6 +7,11 @@ export enum Gamemode {
   Massive = 'massive',
   Slow = 'slow',
   Test = 'test',
+  World = 'world',
+}
+
+export function neverWinCondition(): WinCondition {
+  return () => [];
 }
 
 export type WinCondition = (game: Game) => string[];
@@ -52,7 +57,7 @@ const DEFAULT_WIN_CONDITION = composeWinConditions(
 
 export const GAMEMODE_CONFIGS: Record<string, GamemodeConfig> = {
   [Gamemode.Casual]: {
-    maxPlayers: 5,
+    maxPlayers: 20,
     startMinPlayers: 2,
     startTimerSeconds: 60,
     tickRateMs: 1000,
@@ -141,6 +146,29 @@ export const GAMEMODE_CONFIGS: Record<string, GamemodeConfig> = {
     maxBarracks: 15,
     darknessRange: 10,
     winCondition: DEFAULT_WIN_CONDITION,
+    midSoldierCount: 200,
+  },
+  [Gamemode.World]: {
+    maxPlayers: 20,
+    startMinPlayers: 1,
+    startTimerSeconds: 0,
+    tickRateMs: 1000,
+    maxDurationMs: 0,
+    mapWidth: 500,
+    mapHeight: 500,
+    barracksBuildTime: 30,
+    soldierProductionTime: 60,
+    soldierMoveRange: 3,
+    soldierAttackRange: 1,
+    soldierDetectRange: 6,
+    archerAttackRange: 5,
+    archerDetectRange: 11,
+    soldierAttackBarracksKillChance: 0.15,
+    peaceDurationMs: 0,
+    startingSoldiers: 5,
+    maxBarracks: 10,
+    darknessRange: 20,
+    winCondition: neverWinCondition(),
     midSoldierCount: 200,
   },
 };

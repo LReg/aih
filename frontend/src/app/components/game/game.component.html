@@ -95,6 +95,15 @@
     </div>
   }
 
+  @if (isEliminated) {
+    <div class="game-over">
+      <h2>Eliminated!</h2>
+      <p class="loser">Your units were destroyed</p>
+      <p class="winners-list">The world continues without you &hellip;</p>
+      <button class="btn-leave" (click)="leaveGame()">Back Home</button>
+    </div>
+  }
+
   @if (gameFinished) {
     <div class="game-over">
       <h2>Game Over</h2>

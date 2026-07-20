@@ -13,40 +13,67 @@ export interface GamemodeConfig {
   selector: 'app-gamemode-select',
   standalone: true,
   template: `
-    <div class="gamemode-card" [class.active]="state !== 'idle'" (click)="onClick()">
-      <div class="card-header">
-        <h3>{{ label }}</h3>
-        <span class="badge" [class.queued]="state === 'queued'" [class.countdown]="state === 'countdown'">
-          @switch (state) {
-            @case ('idle') { Join }
-            @case ('queued') { In Queue }
-            @case ('countdown') { Match Starting... }
-          }
-        </span>
+    <div class="gm-outer" [class.active]="state !== 'idle'">
+      <div class="gm-glow"></div>
+      <div class="gm-glow-color"></div>
+      <div class="gm-inner" (click)="onClick()">
+        <div class="card-header">
+          <h3>{{ label }}</h3>
+          <span class="badge" [class.queued]="state === 'queued'" [class.countdown]="state === 'countdown'">
+            @switch (state) {
+              @case ('idle') { Join }
+              @case ('queued') { In Queue }
+              @case ('countdown') { Match Starting... }
+            }
+          </span>
+        </div>
+        <p>{{ config.maxPlayers }} players, {{ config.mapWidth }}x{{ config.mapHeight }} map, {{ config.tickRateMs }}ms ticks</p>
+        @if (queueCount > 0 && state === 'idle') {
+          <p class="queue-info">{{ queueCount }} in queue</p>
+        }
       </div>
-      <p>{{ config.maxPlayers }} players, {{ config.mapWidth }}x{{ config.mapHeight }} map, {{ config.tickRateMs }}ms ticks</p>
-      @if (queueCount > 0 && state === 'idle') {
-        <p class="queue-info">{{ queueCount }} in queue</p>
-      }
     </div>
   `,
   styles: [`
-    .gamemode-card {
-      background: var(--surface);
-      border: 2px solid var(--border);
+    .gm-outer {
+      position: relative;
       border-radius: 12px;
-      padding: 24px;
+      overflow: hidden;
       cursor: pointer;
-      transition: border-color .2s, transform .2s, opacity .2s;
+      transition: transform .2s;
     }
-    .gamemode-card.active {
-      border-color: var(--primary);
-      cursor: default;
-      opacity: .8;
+    .gm-outer:not(.active):hover { transform: translateY(-2px); }
+    .gm-outer.active { cursor: default; opacity: .75; }
+
+    .gm-glow, .gm-glow-color {
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
     }
-    .gamemode-card:not(.active):hover {
-      border-color: var(--primary);
-      transform: translateY(-2px);
+    .gm-glow {
+      background: conic-gradient(from 0deg, #334155, #475569, #334155, #1e293b, #334155);
+    }
+    .gm-glow-color {
+      background: conic-gradient(from 0deg, #a78bfa, #60a5fa, #34d399, #a78bfa);
+      opacity: 0;
+      transition: opacity .35s .3s;
+    }
+    .gm-outer:not(.active):hover .gm-glow-color,
+    .gm-outer.active .gm-glow-color {
+      opacity: 1;
+      animation: gmSpin 4s linear infinite;
+    }
+    .gm-outer.active .gm-glow-color {
+      transition: opacity .35s;
+    }
+    @keyframes gmSpin { to { rotate: 360deg; } }
+
+    .gm-inner {
+      position: relative;
+      margin: 2px;
+      border-radius: 10px;
+      background: var(--surface);
+      padding: 24px;
     }
     .card-header {
       display: flex;

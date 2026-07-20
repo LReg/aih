@@ -62,4 +62,12 @@ export class GameApiService {
   updateLobbySettings(lobbyId: string, settings: Partial<LobbySettings>) {
     return this.http.patch<{ updated: boolean }>(`${environment.apiUrl}/lobby/${lobbyId}/settings`, settings);
   }
+
+  worldJoin() {
+    return this.http.post<{ gameId: string }>(`${environment.apiUrl}/world/join`, {});
+  }
+
+  getWorldStatus() {
+    return this.http.get<{ activePlayers: number; maxPlayers: number }>(`${environment.apiUrl}/world/status`);
+  }
 }

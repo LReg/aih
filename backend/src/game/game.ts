@@ -70,6 +70,14 @@ export class Game {
     }
   }
 
+  addPlayer(playerId: string, playerName?: string): void {
+    this.players.push(playerId);
+    if (playerName) this.playerNames[playerId] = playerName;
+    const used = new Set(Object.values(this.playerColors));
+    const free = COLORS.find(c => !used.has(c));
+    this.playerColors[playerId] = free || COLORS[this.players.length % COLORS.length];
+  }
+
   destroy() {
     this.actionQueue.length = 0;
     this.map.entities.clear();

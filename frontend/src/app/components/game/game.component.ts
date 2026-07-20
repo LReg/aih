@@ -51,17 +51,24 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   gameTick = 0;
   elapsedTime = '00:00';
   productionMultiplier = 1;
+  gamemode = '';
+  hasSpawned = false;
   playerName = '';
   playerColor = '#ccc';
   showTickInfo = false;
   tickCalcTimes: number[] = [];
   showScoreboard = false;
   scoreboardPlayers: { name: string; color: string; elo: number | null }[] = [];
+  private scoreboardPlayerCount = 0;
   eloColor = eloColor;
 
   get peaceRemaining(): number {
     if (!this.peaceUntil) return 0;
     return Math.max(0, Math.floor((this.peaceUntil - Date.now()) / 1000));
+  }
+
+  get isEliminated(): boolean {
+    return this.gamemode === 'world' && this.hasSpawned && this.soldierCount === 0 && !this.gameFinished;
   }
 
   get tickCalcAvg(): number {
@@ -242,7 +249,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
           }
           return;
         }
-        this.applyState(state);
+        if (this.gameTick === 0) this.applyState(state);
       },
       error: () => {
         if (retries > 0) {
@@ -302,10 +309,17 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     this.playerColor = state.playerColors?.[this.userId] || '#ccc';
     this.playerNames = state.playerNames || {};
     this.maxBarracks = state.maxBarracks;
+    this.gamemode = state.gamemode;
     this.gameScene.updateFromState(state);
     this.barracksCount = this.gameScene.countPlayerBarracks(this.userId);
     this.soldierCount = this.gameScene.countPlayerSoldiers(this.userId);
+    if (this.soldierCount > 0) this.hasSpawned = true;
     this.productionMultiplier = state.productionMultipliers?.[this.userId] ?? 1;
+
+    if (state.players && state.players.length !== this.scoreboardPlayerCount) {
+      this.scoreboardPlayerCount = state.players.length;
+      this.buildScoreboard(state.players, state.playerColors, state.playerNames);
+    }
 
     if (state.state === 'finished') {
       this.gameFinished = true;
@@ -323,13 +337,18 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     this.peaceUntil = state.peaceUntil;
     if (state.tickCalcTime !== undefined) this.recordTickCalc(state.tickCalcTime);
     this.elapsedTime = this.formatElapsed(state.startedAt);
+    this.gamemode = state.gamemode;
     this.playerColor = state.playerColors?.[this.userId] || '#ccc';
     this.playerNames = state.playerNames || {};
+    this.maxBarracks = state.maxBarracks;
     this.barracksCount = this.gameScene.countPlayerBarracks(this.userId);
     this.soldierCount = this.gameScene.countPlayerSoldiers(this.userId);
+    if (this.soldierCount > 0) this.hasSpawned = true;
     this.productionMultiplier = state.productionMultipliers?.[this.userId] ?? 1;
+    this.gameScene.updateFromState(state);
 
-    if (state.players && this.scoreboardPlayers.length === 0) {
+    if (state.players && state.players.length !== this.scoreboardPlayerCount) {
+      this.scoreboardPlayerCount = state.players.length;
       this.buildScoreboard(state.players, state.playerColors, state.playerNames);
     }
 
@@ -352,6 +371,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
       this.gameScene.updateFromState(state);
       this.barracksCount = this.gameScene.countPlayerBarracks(this.userId);
       this.soldierCount = this.gameScene.countPlayerSoldiers(this.userId);
+      if (this.soldierCount > 0) this.hasSpawned = true;
       this.productionMultiplier = state.productionMultipliers?.[this.userId] ?? 1;
     }
   }
@@ -362,6 +382,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     this.gameScene.updateFromState(diff);
     this.barracksCount = this.gameScene.countPlayerBarracks(this.userId);
     this.soldierCount = this.gameScene.countPlayerSoldiers(this.userId);
+    if (this.soldierCount > 0) this.hasSpawned = true;
     this.productionMultiplier = diff.productionMultipliers?.[this.userId] ?? 1;
   }
 

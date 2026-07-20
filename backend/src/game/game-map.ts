@@ -331,6 +331,38 @@ export class GameMap {
     return result;
   }
 
+  findSafeSpawnPosition(existingPlayerIds: string[]): { x: number; y: number } | null {
+    const MIN_DIST = 40;
+    for (let attempt = 0; attempt < 200; attempt++) {
+      const x = Math.floor(Math.random() * (this.width - 20)) + 10;
+      const y = Math.floor(Math.random() * (this.height - 20)) + 10;
+      if (!this.isInBounds(x, y) || !this.isTileEmpty(x, y)) continue;
+
+      let tooClose = false;
+      for (const id of existingPlayerIds) {
+        for (const e of this.soldiers.values()) {
+          if (e.ownerId === id && Math.abs(e.x - x) < MIN_DIST && Math.abs(e.y - y) < MIN_DIST) {
+            tooClose = true;
+            break;
+          }
+        }
+        if (tooClose) break;
+      }
+      if (tooClose) continue;
+
+      let hasRoom = true;
+      for (let dy = -2; dy <= 2 && hasRoom; dy++) {
+        for (let dx = -2; dx <= 2 && hasRoom; dx++) {
+          if (!this.isInBounds(x + dx, y + dy) || !this.isTileEmpty(x + dx, y + dy)) {
+            hasRoom = false;
+          }
+        }
+      }
+      if (hasRoom) return { x, y };
+    }
+    return null;
+  }
+
   moveEntity(id: string, nx: number, ny: number) {
     const entity = this.entities.get(id);
     if (!entity) return;

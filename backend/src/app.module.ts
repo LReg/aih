@@ -11,9 +11,10 @@ import { MatchmakingModule } from './matchmaking/matchmaking.module';
 import { LobbyModule } from './lobby/lobby.module';
 import { AdminModule } from './admin/admin.module';
 import { ProfileModule } from './profile/profile.module';
+import { WorldModule } from './world/world.module';
 
 @Module({
-  imports: [DatabaseModule, AuthModule, UserModule, SocketModule, GameModule, QueueModule, MatchmakingModule, LobbyModule, AdminModule, ProfileModule],
+  imports: [DatabaseModule, AuthModule, UserModule, SocketModule, GameModule, QueueModule, MatchmakingModule, LobbyModule, AdminModule, ProfileModule, WorldModule],
   providers: [
     {
       provide: APP_GUARD,
