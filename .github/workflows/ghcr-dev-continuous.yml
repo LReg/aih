@@ -1,0 +1,67 @@
+name: Continuously deploy dev on every main push
+
+# Separate from ghcr-deploy.yml's tag-triggered release builds: this one fires on
+# every push to main, tags the image with just the commit sha, and bumps THIS repo's
+# own deploy/helm/strat/values.yaml to that sha — never infra. Since dev's Application
+# (infra's gitops/apps/strat-dev.yaml, once it exists) won't override image.tag, it
+# inherits this chart default and rolls out automatically on every commit. Prod pins
+# its own tag explicitly in infra's values file, so it never moves because of this
+# workflow — it only changes when someone edits gitops/values/strat-prod.yaml by hand.
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'deploy/helm/**'   # skip re-running on the bump commit below
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.vars.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: vars
+        run: echo "sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          target: frontend
+          push: true
+          tags: ghcr.io/lreg/aih-frontend:${{ steps.vars.outputs.sha }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: true
+          tags: ghcr.io/lreg/aih-backend:${{ steps.vars.outputs.sha }}
+
+  bump-dev:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bump image tag
+        run: |
+          sed -i "s/^\(\s*tag: \).*/\1\"${{ needs.build-and-push.outputs.sha }}\"/" deploy/helm/strat/values.yaml
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add deploy/helm/strat/values.yaml
+          git diff --cached --quiet || git commit -m "chore: bump strat image tag to ${{ needs.build-and-push.outputs.sha }}"
+          git push

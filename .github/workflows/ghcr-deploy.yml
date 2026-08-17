@@ -1,0 +1,49 @@
+name: Build and push versioned images to GHCR
+
+# Only fires on a version tag (e.g. v1.0.1), not on every push to main — commits
+# accumulate on main freely, nothing ships an image until you deliberately tag a
+# release. Each image gets pushed under TWO tags for the same build: the version
+# and the short commit sha — infra's per-environment values files can pin either.
+# This workflow never writes back to git and never touches the cluster; it only
+# pushes images. Which version is deployed where is chosen entirely in the infra
+# repo (gitops/values/strat-*.yaml), not here.
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: vars
+        run: echo "sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          target: frontend
+          push: true
+          tags: |
+            ghcr.io/lreg/aih-frontend:${{ github.ref_name }}
+            ghcr.io/lreg/aih-frontend:${{ steps.vars.outputs.sha }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: true
+          tags: |
+            ghcr.io/lreg/aih-backend:${{ github.ref_name }}
+            ghcr.io/lreg/aih-backend:${{ steps.vars.outputs.sha }}
