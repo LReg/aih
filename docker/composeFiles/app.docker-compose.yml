@@ -59,11 +59,13 @@ services:
     build:
       context: ../../frontend
       dockerfile: Dockerfile
-      args:
-        - BASE_URL=https://${APP_SUBDOMAIN}.${DOMAIN}.${D_ENDING}
-        - API_URL=https://${APP_SUBDOMAIN}.${DOMAIN}.${D_ENDING}/api
-        - AUTH_URL=https://${AUTH_SUBDOMAIN}.${DOMAIN}.${D_ENDING}
-        - CLIENT_ID=${OIDC_CLIENT_ID}
+    environment:
+      # Read at container start by docker-entrypoint.sh, not baked into the JS bundle at build
+      # time anymore — same image works unmodified in k8s too.
+      - BASE_URL=https://${APP_SUBDOMAIN}.${DOMAIN}.${D_ENDING}
+      - API_URL=https://${APP_SUBDOMAIN}.${DOMAIN}.${D_ENDING}/api
+      - AUTH_URL=https://${AUTH_SUBDOMAIN}.${DOMAIN}.${D_ENDING}
+      - CLIENT_ID=${OIDC_CLIENT_ID}
     networks:
       - TraefikNetwork
     labels:

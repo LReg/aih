@@ -12,17 +12,14 @@ COPY --from=build-deps /data/node_modules ./node_modules
 COPY --from=build-deps /data/package.json /data/package-lock.json /data/tsconfig.json /data/tsconfig.app.json /data/angular.json ./
 COPY src ./src
 COPY public ./public
-ARG BASE_URL
-ARG API_URL
-ARG AUTH_URL
-ARG CLIENT_ID
-ENV BASE_URL=$BASE_URL
-ENV API_URL=$API_URL
-ENV AUTH_URL=$AUTH_URL
-ENV CLIENT_ID=$CLIENT_ID
-RUN npm run envvars && npm run build
+RUN npm run build
 
 FROM nginx:1.27.4 AS frontend
 COPY docker/remote.nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /build/dist/frontend/browser /usr/share/nginx/html
+# Renders /config.json from real env vars at container start — see docker-entrypoint.sh.
+# Values are no longer baked into the JS bundle at build time (see environments/environment.ts):
+# the same image now runs unmodified in any environment, docker-compose or k8s.
+COPY docker-entrypoint.sh /docker-entrypoint.d/40-write-runtime-config.sh
+RUN chmod +x /docker-entrypoint.d/40-write-runtime-config.sh
 EXPOSE 80
