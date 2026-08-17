@@ -15,7 +15,7 @@ replicaCount: 1
 image:
   registry: ghcr.io/lreg
   pullPolicy: IfNotPresent
-  tag: ""
+  tag: "18377ed"
   frontend:
     repository: aih-frontend
   backend:
