@@ -1,0 +1,72 @@
+# Base/shared defaults for every environment, same split as planning-poker's chart
+# (state/wanted-state/06-migration-runbook.md, Phase 1/2) — ingress.host and anything else
+# that differs per environment is deliberately NOT set here, it lives in the infra repo's
+# gitops/values/ override files, merged on top of this one by each environment's Argo CD
+# Application. image.tag is the one exception, bumped by ghcr-dev-continuous.yml on every
+# push to main in this same repo.
+#
+# mongo/seaweedfs/lldap below point at the STILL-EXTERNAL docker-compose data tier — this
+# chart only covers the app tier for now. They stay empty here (set per-environment in infra,
+# once Phase 7's zero-copy migration actually happens); an Application pointed at this chart
+# before then just stays idle/unused, same as every other not-yet-migrated app's chart.
+
+replicaCount: 1
+
+image:
+  registry: ghcr.io/lreg
+  pullPolicy: IfNotPresent
+  tag: ""
+  frontend:
+    repository: aih-frontend
+  backend:
+    repository: aih-backend
+
+# Set per-environment in infra.
+ingress:
+  host: ""
+
+# The frontend's own domain split into subdomain/domain/D_ENDING in the old compose — here
+# it's just ingress.host, the same value used to build DOMAIN/AUTH_DOMAIN below by template.
+auth:
+  # e.g. stratauth.lreg0.de — a separate hostname from ingress.host, still Authelia's (not
+  # Zitadel's — that swap is Phase 7, see 03-auth-zitadel.md) until this app's own migration.
+  domain: ""
+  clientId: ""
+
+backend:
+  port: "8080"
+  resources:
+    requests:
+      cpu: 25m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+
+frontend:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 128Mi
+  features:
+    sso: true
+    registration: true
+
+# Still-external data tier (see the file-level comment above).
+mongo:
+  uri: ""
+
+seaweedfs:
+  masterUrl: ""
+  volumeUrl: ""
+
+lldap:
+  url: ""
+  adminUsername: admin
+
+# Created once, by hand, imperatively, per namespace — same pattern as planning-poker's
+# appSecretsName (01-cluster-architecture.md's "Secrets: the one thing that doesn't go
+# through git"). Keys expected: lldap-admin-password, credential-encryption-key,
+# ai-hub-api-key.
+appSecretsName: strat-secrets

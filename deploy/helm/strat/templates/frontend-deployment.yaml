@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-frontend
+  labels:
+    {{- include "strat.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: strat
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: frontend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: strat
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: "{{ .Values.image.registry }}/{{ .Values.image.frontend.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 80
+          env:
+            # Read at container start by docker-entrypoint.sh (renders config.json) —
+            # not baked into the JS bundle at build time.
+            - name: BASE_URL
+              value: {{ printf "https://%s" .Values.ingress.host | quote }}
+            - name: API_URL
+              value: {{ printf "https://%s/api" .Values.ingress.host | quote }}
+            - name: AUTH_URL
+              value: {{ printf "https://%s" .Values.auth.domain | quote }}
+            - name: CLIENT_ID
+              value: {{ .Values.auth.clientId | quote }}
+            - name: FEATURE_SSO
+              value: {{ .Values.frontend.features.sso | quote }}
+            - name: FEATURE_REGISTRATION
+              value: {{ .Values.frontend.features.registration | quote }}
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}

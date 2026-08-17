@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-backend
+  labels:
+    {{- include "strat.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: strat
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: backend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: strat
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: backend
+    spec:
+      containers:
+        - name: backend
+          image: "{{ .Values.image.registry }}/{{ .Values.image.backend.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.backend.port }}
+          env:
+            - name: DOMAIN
+              value: {{ .Values.ingress.host | quote }}
+            - name: AUTH_DOMAIN
+              value: {{ .Values.auth.domain | quote }}
+            - name: OIDC_CLIENT_ID
+              value: {{ .Values.auth.clientId | quote }}
+            - name: FRONTEND_URL
+              value: {{ printf "https://%s" .Values.ingress.host | quote }}
+            - name: MONGO_URI
+              value: {{ .Values.mongo.uri | quote }}
+            - name: SEAWEEDFS_MASTER_URL
+              value: {{ .Values.seaweedfs.masterUrl | quote }}
+            - name: SEAWEEDFS_VOLUME_URL
+              value: {{ .Values.seaweedfs.volumeUrl | quote }}
+            - name: LLDAP_URL
+              value: {{ .Values.lldap.url | quote }}
+            - name: LLDAP_ADMIN_USERNAME
+              value: {{ .Values.lldap.adminUsername | quote }}
+            - name: LLDAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.appSecretsName }}
+                  key: lldap-admin-password
+            - name: CREDENTIAL_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.appSecretsName }}
+                  key: credential-encryption-key
+            - name: AI_HUB_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.appSecretsName }}
+                  key: ai-hub-api-key
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
