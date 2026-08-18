@@ -34,21 +34,17 @@ spec:
               value: {{ .Values.auth.clientId | quote }}
             - name: FRONTEND_URL
               value: {{ printf "https://%s" .Values.ingress.host | quote }}
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.mongo.credentialsSecretName }}
+                  key: password
             - name: MONGO_URI
-              value: {{ .Values.mongo.uri | quote }}
+              value: {{ printf "mongodb://%s:$(MONGO_PASSWORD)@%s/%s?authSource=%s" .Values.mongo.user .Values.mongo.host .Values.mongo.database .Values.mongo.database | quote }}
             - name: SEAWEEDFS_MASTER_URL
               value: {{ .Values.seaweedfs.masterUrl | quote }}
             - name: SEAWEEDFS_VOLUME_URL
               value: {{ .Values.seaweedfs.volumeUrl | quote }}
-            - name: LLDAP_URL
-              value: {{ .Values.lldap.url | quote }}
-            - name: LLDAP_ADMIN_USERNAME
-              value: {{ .Values.lldap.adminUsername | quote }}
-            - name: LLDAP_ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.appSecretsName }}
-                  key: lldap-admin-password
             - name: CREDENTIAL_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:

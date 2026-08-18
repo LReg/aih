@@ -11,7 +11,6 @@ CONFIG_PATH="/usr/share/nginx/html/config.json"
 : "${AUTH_URL:?AUTH_URL must be set}"
 : "${CLIENT_ID:?CLIENT_ID must be set}"
 : "${FEATURE_SSO:=true}"
-: "${FEATURE_REGISTRATION:=true}"
 
 cat > "$CONFIG_PATH" <<EOF
 {
@@ -20,8 +19,7 @@ cat > "$CONFIG_PATH" <<EOF
   "authUrl": "${AUTH_URL}",
   "clientId": "${CLIENT_ID}",
   "features": {
-    "sso": ${FEATURE_SSO},
-    "registration": ${FEATURE_REGISTRATION}
+    "sso": ${FEATURE_SSO}
   }
 }
 EOF

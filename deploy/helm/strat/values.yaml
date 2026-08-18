@@ -1,14 +1,16 @@
 # Base/shared defaults for every environment, same split as planning-poker's chart
 # (state/wanted-state/06-migration-runbook.md, Phase 1/2) — ingress.host and anything else
 # that differs per environment is deliberately NOT set here, it lives in the infra repo's
-# gitops/values/ override files, merged on top of this one by each environment's Argo CD
-# Application. image.tag is the one exception, bumped by ghcr-dev-continuous.yml on every
-# push to main in this same repo.
+# own deploy/helm/strat/values.yaml, merged on top of this one by the Argo CD Application.
+# image.tag is the one exception, bumped by ghcr-dev-continuous.yml on every push to main
+# in this same repo.
 #
-# mongo/seaweedfs/lldap below point at the STILL-EXTERNAL docker-compose data tier — this
-# chart only covers the app tier for now. They stay empty here (set per-environment in infra,
-# once Phase 7's zero-copy migration actually happens); an Application pointed at this chart
-# before then just stays idle/unused, same as every other not-yet-migrated app's chart.
+# mongo below points at the shared in-cluster MongoDB instance (infra repo's
+# deploy/k8s/databases/mongodb/), same host/user/database/credentialsSecretName shape as
+# musik-star's chart — stays empty here, set per-environment in infra. seaweedfs is unused
+# dead config (never read anywhere in backend/src), left in place, out of scope for the
+# Zitadel migration. lldap is gone: Zitadel is now the identity provider, see
+# state/wanted-state/03-auth-zitadel.md.
 
 replicaCount: 1
 
@@ -25,11 +27,9 @@ image:
 ingress:
   host: ""
 
-# The frontend's own domain split into subdomain/domain/D_ENDING in the old compose — here
-# it's just ingress.host, the same value used to build DOMAIN/AUTH_DOMAIN below by template.
+# Zitadel's hostname (no scheme — AuthGuard builds https://$AUTH_DOMAIN/oidc/v1/userinfo
+# itself) and this app's own project/client id in it, see 03-auth-zitadel.md.
 auth:
-  # e.g. stratauth.lreg0.de — a separate hostname from ingress.host, still Authelia's (not
-  # Zitadel's — that swap is Phase 7, see 03-auth-zitadel.md) until this app's own migration.
   domain: ""
   clientId: ""
 
@@ -51,22 +51,22 @@ frontend:
       memory: 128Mi
   features:
     sso: true
-    registration: true
 
-# Still-external data tier (see the file-level comment above).
+# Shared instance (see the file-level comment above). credentialsSecretName holds a single
+# "password" key — MONGO_URI is assembled from these plus that password via Kubernetes'
+# $(VAR) env expansion in backend-deployment.yaml, same trick musik-star's chart uses.
 mongo:
-  uri: ""
+  host: ""
+  user: ""
+  database: ""
+  credentialsSecretName: ""
 
 seaweedfs:
   masterUrl: ""
   volumeUrl: ""
 
-lldap:
-  url: ""
-  adminUsername: admin
-
-# Created once, by hand, imperatively, per namespace — same pattern as planning-poker's
-# appSecretsName (01-cluster-architecture.md's "Secrets: the one thing that doesn't go
-# through git"). Keys expected: lldap-admin-password, credential-encryption-key,
-# ai-hub-api-key.
+# A SealedSecret (infra repo's deploy/k8s/strat/app-secrets.sealed.yaml), not hand-created
+# — planning-poker's own by-hand appSecretsName predates the Sealed Secrets workflow this
+# repo now uses for every app (manual-exec/sealed-secrets/). Keys expected:
+# credential-encryption-key, ai-hub-api-key.
 appSecretsName: strat-secrets

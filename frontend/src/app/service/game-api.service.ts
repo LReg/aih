@@ -31,10 +31,6 @@ export class GameApiService {
     return this.http.get<{ gameId: string | null }>(`${environment.apiUrl}/game/active`);
   }
 
-  register(email: string, name: string, password: string) {
-    return this.http.post<{ success: boolean; message: string }>(`${environment.apiUrl}/auth/register`, { email, name, password });
-  }
-
   createLobby(settings?: Partial<LobbySettings>) {
     return this.http.post<{ lobbyId: string }>(`${environment.apiUrl}/lobby`, { settings });
   }

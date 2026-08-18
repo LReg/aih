@@ -9,16 +9,15 @@ export interface Environment {
   clientId: string;
   features: {
     sso: boolean;
-    registration: boolean;
   };
 }
 
 export const environment: Environment = {
   baseUrl: "http://localhost:4200",
   apiUrl: "http://127.0.0.1:8081",
-  authUrl: "https://stratauth.lreg0.de",
-  clientId: "mhTPFZTGW4SrreKtMdWSr4DGpa5rRUZewcfqnFbVrX757MYeX0tuNJ39zV4CM",
-  features: { sso: true, registration: true },
+  authUrl: "https://zitadel.k3s.lreg0.de",
+  clientId: "",
+  features: { sso: true },
 };
 
 /**

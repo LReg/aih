@@ -8,18 +8,15 @@ import {
 } from '@nestjs/common';
 import axios from 'axios';
 import { DatabaseService } from '../database/database.service';
-import { LldapService } from './lldap.service';
-import { User, Role } from '../types/User';
-import { upsertUser, upsertUserLocal, getUserRole, setUserRole, getUserById } from '../dao/UserDao';
+import { User } from '../types/User';
+import { upsertUser, upsertUserLocal } from '../dao/UserDao';
+import { extractZitadelRole } from './zitadel-roles';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
   private readonly logger = new Logger(AuthGuard.name);
 
-  constructor(
-    private db: DatabaseService,
-    private lldap: LldapService,
-  ) {}
+  constructor(private db: DatabaseService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     if (context.getType() !== 'http') {
@@ -27,10 +24,6 @@ export class AuthGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest();
-
-    if (request.url === '/auth/register' || request.url.startsWith('/admin/')) {
-      return true;
-    }
 
     const authHeader = request.headers.authorization;
 
@@ -48,7 +41,7 @@ export class AuthGuard implements CanActivate {
         throw new UnauthorizedException('Invalid Authorization header');
       }
 
-      const userinfoEndpoint = `https://${process.env.AUTH_DOMAIN}/api/oidc/userinfo`;
+      const userinfoEndpoint = `https://${process.env.AUTH_DOMAIN}/oidc/v1/userinfo`;
       const userInfo = await this.fetchUserInfo(userinfoEndpoint, token);
       if (!userInfo) {
         throw new UnauthorizedException('Invalid token');
@@ -101,12 +94,6 @@ export class AuthGuard implements CanActivate {
   private async storeUserInDB(db: import('mongodb').Db, user: User) {
     try {
       await upsertUser(db, user);
-      let role = await getUserRole(db, user.preferredUsername);
-      if (role === Role.NOROLE) {
-        await setUserRole(db, user.preferredUsername, Role.USER);
-        role = Role.USER;
-      }
-      user.role = role;
     } catch (err) {
       console.error('Error while storing user in DB:', err);
     }
@@ -123,30 +110,7 @@ export class AuthGuard implements CanActivate {
     const data = response.data as Record<string, unknown>;
     data.preferredUsername = data.preferred_username;
     data.userId = data.sub;
-
-    const oidcPreferredUsername = (data.preferred_username || '') as string;
-    const userId = (data.sub || '') as string;
-
-    // Check MongoDB for stored display name (from previous resolution)
-    if (userId) {
-      try {
-        const stored = await getUserById(this.db.db, userId);
-        if (stored?.preferredUsername && !stored.preferredUsername.includes('@')) {
-          data.preferredUsername = stored.preferredUsername;
-          return data as unknown as User;
-        }
-      } catch { /* continue */ }
-    }
-
-    // Otherwise resolve from LLDAP displayName
-    if (this.lldap.isEnabled && oidcPreferredUsername) {
-      try {
-        const lldapUser = await this.lldap.getUser(oidcPreferredUsername);
-        if (lldapUser?.displayName) {
-          data.preferredUsername = lldapUser.displayName;
-        }
-      } catch { /* use OIDC value */ }
-    }
+    data.role = extractZitadelRole(data);
 
     return data as unknown as User;
   }

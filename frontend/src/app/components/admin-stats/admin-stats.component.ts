@@ -1,9 +1,8 @@
-import { Component, OnDestroy } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { interval, Subscription } from 'rxjs';
-import { FormsModule } from '@angular/forms';
 import { NgClass } from '@angular/common';
 
 interface TickStats {
@@ -44,7 +43,7 @@ interface AdminStats {
 @Component({
   selector: 'app-admin-stats',
   standalone: true,
-  imports: [NgClass, FormsModule],
+  imports: [NgClass],
   template: `
     <div class="admin-page">
       <header class="topbar">
@@ -63,25 +62,7 @@ interface AdminStats {
         </div>
       </header>
 
-      @if (!authenticated) {
-        <main class="login-card">
-          <svg class="login-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3 11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          <h2 class="login-heading">Admin Access</h2>
-          <input
-            class="text-input"
-            type="password"
-            placeholder="Enter admin password"
-            [(ngModel)]="password"
-            (keydown.enter)="login()"
-            autofocus
-            aria-label="Admin password"
-          />
-          @if (loginError) {
-            <p class="error-msg" role="alert">{{ loginError }}</p>
-          }
-          <button class="btn btn-primary" (click)="login()" [disabled]="!password">Unlock</button>
-        </main>
-      } @else if (loading) {
+      @if (loading) {
         <main class="loading-state">
           <div class="skeleton-group">
             <div class="skeleton skeleton-card"></div>
@@ -332,58 +313,6 @@ interface AdminStats {
     .text-btn:hover { color: var(--text); border-color: var(--border-hover); background: var(--accent-muted); }
     .text-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-    .login-card {
-      max-width: 360px;
-      margin: 100px auto;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
-      padding: 48px 32px;
-      background: var(--card-bg);
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-    }
-    .login-icon { color: var(--accent); }
-    .login-heading { margin: 0; font-size: 18px; font-weight: 600; }
-
-    .text-input {
-      width: 100%;
-      padding: 12px 16px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      background: var(--surface);
-      color: var(--text);
-      font-size: 15px;
-      outline: none;
-      transition: .15s;
-      box-sizing: border-box;
-    }
-    .text-input::placeholder { color: var(--text-dim); }
-    .text-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-muted); }
-    .text-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-
-    .btn {
-      width: 100%;
-      padding: 12px 20px;
-      border: none;
-      border-radius: var(--radius-sm);
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: .15s;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-    .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    .btn:disabled { opacity: .4; cursor: default; }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-primary:not(:disabled):hover { background: var(--accent-hover); }
-
-    .error-msg { color: var(--danger); font-size: 13px; margin: 0; text-align: center; }
-
     .loading-state { padding: 48px 0; display: flex; flex-direction: column; gap: 16px; }
     .skeleton-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
     .skeleton {
@@ -510,11 +439,8 @@ interface AdminStats {
     .tick-danger { color: var(--danger); }
   `],
 })
-export class AdminStatsComponent implements OnDestroy {
-  password = '';
-  authenticated = false;
-  loginError = '';
-  loading = false;
+export class AdminStatsComponent implements OnInit, OnDestroy {
+  loading = true;
   refreshing = false;
   stats: AdminStats | null = null;
   private refreshSub?: Subscription;
@@ -564,34 +490,26 @@ export class AdminStatsComponent implements OnDestroy {
     return Math.max(2, Math.min(100, this.stats.tickDiff.overall.avgUtil));
   }
 
-  login() {
-    if (!this.password) return;
-    this.loginError = '';
-    this.loading = true;
+  ngOnInit() {
     this.fetchStats();
+    this.startAutoRefresh();
   }
 
   private fetchStats() {
-    const params = new HttpParams().set('password', this.password);
-    this.http.get<AdminStats>(`${environment.apiUrl}/admin/stats`, { params }).subscribe({
+    this.http.get<AdminStats>(`${environment.apiUrl}/admin/stats`).subscribe({
       next: (data) => {
-        this.authenticated = true;
         this.loading = false;
         this.stats = data;
-        this.startAutoRefresh();
       },
       error: () => {
         this.loading = false;
-        this.loginError = 'Invalid password';
-        this.password = '';
       },
     });
   }
 
   private startAutoRefresh() {
     this.refreshSub = interval(5000).subscribe(() => {
-      const params = new HttpParams().set('password', this.password);
-      this.http.get<AdminStats>(`${environment.apiUrl}/admin/stats`, { params }).subscribe({
+      this.http.get<AdminStats>(`${environment.apiUrl}/admin/stats`).subscribe({
         next: (data) => { this.stats = data; },
         error: () => { this.stopAutoRefresh(); },
       });
@@ -606,8 +524,7 @@ export class AdminStatsComponent implements OnDestroy {
   refresh() {
     if (this.refreshing) return;
     this.refreshing = true;
-    const params = new HttpParams().set('password', this.password);
-    this.http.get<AdminStats>(`${environment.apiUrl}/admin/stats`, { params }).subscribe({
+    this.http.get<AdminStats>(`${environment.apiUrl}/admin/stats`).subscribe({
       next: (data) => { this.stats = data; this.refreshing = false; },
       error: () => { this.refreshing = false; },
     });

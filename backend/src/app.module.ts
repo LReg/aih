@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { DatabaseModule } from './database/database.module';
 import { AuthGuard } from './auth/auth.guard';
-import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { SocketModule } from './socket/socket.module';
 import { GameModule } from './game/game.module';
@@ -14,7 +13,7 @@ import { ProfileModule } from './profile/profile.module';
 import { WorldModule } from './world/world.module';
 
 @Module({
-  imports: [DatabaseModule, AuthModule, UserModule, SocketModule, GameModule, QueueModule, MatchmakingModule, LobbyModule, AdminModule, ProfileModule, WorldModule],
+  imports: [DatabaseModule, UserModule, SocketModule, GameModule, QueueModule, MatchmakingModule, LobbyModule, AdminModule, ProfileModule, WorldModule],
   providers: [
     {
       provide: APP_GUARD,

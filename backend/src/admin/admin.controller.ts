@@ -1,10 +1,10 @@
-import { Controller, Get, Query, UnauthorizedException, Logger } from '@nestjs/common';
+import { Controller, Get, Req, ForbiddenException, Logger } from '@nestjs/common';
+import type { Request } from 'express';
 import { AdminStatsService } from './admin-stats.service';
 import { GameDao } from '../dao/game-dao';
 import { LobbyService } from '../lobby/lobby.service';
 import { QueueService } from '../queue/queue.service';
-
-const ADMIN_PASSWORD = 'strad-admin-view';
+import { Role } from '../types/User';
 
 @Controller('admin')
 export class AdminController {
@@ -18,10 +18,11 @@ export class AdminController {
   ) {}
 
   @Get('stats')
-  async getStats(@Query('password') password: string) {
-    if (password !== ADMIN_PASSWORD) {
-      this.logger.warn('failed admin auth attempt');
-      throw new UnauthorizedException('invalid password');
+  async getStats(@Req() req: Request) {
+    const user = (req as any).user;
+    if (user?.role !== Role.ADMIN) {
+      this.logger.warn(`admin stats access denied for user="${user?.preferredUsername}"`);
+      throw new ForbiddenException('Admin role required');
     }
 
     const allLobbies = this.lobbyService.getAllLobbies();

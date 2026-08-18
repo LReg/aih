@@ -43,36 +43,6 @@ export async function upsertUserLocal(db: Db, uuid: string, username: string): P
     }
 }
 
-export async function getUserRole(db: Db, preferredUsername: string): Promise<Role> {
-    try {
-        const user = await db.collection<User>('user').findOne({ preferredUsername });
-        if (!user) {
-            throw new Error('User not found');
-        }
-        if (!user.role) {
-            return Role.NOROLE;
-        }
-        return user.role;
-    } catch (err) {
-        console.error('Error while fetching user role:', err);
-        throw err;
-    }
-}
-
-export async function setUserRole(db: Db, preferredUsername: string, role: Role): Promise<UpdateResult | null> {
-    try {
-        return await db.collection<User>('user').updateOne(
-            { preferredUsername },
-            {
-                $set: { role }
-            }
-        );
-    } catch (err) {
-        console.error('Error while setting user role:', err);
-        throw err;
-    }
-}
-
 export async function getAllUsers(db: Db): Promise<User[]> {
     try {
         const usersCursor = await db.collection<User>('user').find({});

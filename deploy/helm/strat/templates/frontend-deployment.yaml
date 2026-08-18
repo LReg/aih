@@ -38,7 +38,5 @@ spec:
               value: {{ .Values.auth.clientId | quote }}
             - name: FEATURE_SSO
               value: {{ .Values.frontend.features.sso | quote }}
-            - name: FEATURE_REGISTRATION
-              value: {{ .Values.frontend.features.registration | quote }}
           resources:
             {{- toYaml .Values.frontend.resources | nindent 12 }}
