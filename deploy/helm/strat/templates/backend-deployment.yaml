@@ -19,6 +19,14 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: backend
     spec:
+      # AUTH_DOMAIN (Zitadel) is called over HTTPS at runtime, so a trailing dot on the
+      # hostname isn't an option (breaks TLS hostname verification) — same ndots:5
+      # resolv.conf search-domain bug musik-star/ai-tracker both hit, confirmed not
+      # specific to Alpine/musl. ndots:1 makes any dotted name resolve absolute-first.
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
       containers:
         - name: backend
           image: "{{ .Values.image.registry }}/{{ .Values.image.backend.repository }}:{{ .Values.image.tag }}"
