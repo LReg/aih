@@ -19,6 +19,10 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: backend
     spec:
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       # AUTH_DOMAIN (Zitadel) is called over HTTPS at runtime, so a trailing dot on the
       # hostname isn't an option (breaks TLS hostname verification) — same ndots:5
       # resolv.conf search-domain bug musik-star/ai-tracker both hit, confirmed not
