@@ -15,7 +15,10 @@ export class DatabaseService implements OnApplicationBootstrap {
     this.client = new MongoClient(uri);
     await this.client.connect();
     await this.client.db().admin().ping();
-    this.db = this.client.db('public');
+    // Whatever database the URI's own path names — 'strat' on the shared in-cluster
+    // instance (deploy/helm/strat/values.yaml's mongo.database), not hardcoded, since
+    // the app's Mongo role only has readWrite on its own same-named database.
+    this.db = this.client.db();
     console.log('Successfully connected to MongoDB');
   }
 }
