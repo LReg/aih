@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, CUSTOM_ELEMENTS_SCHEMA, OnDestroy, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { Subscription, first } from 'rxjs';
 import { GameApiService } from '../../service/game-api.service';
@@ -14,6 +14,9 @@ import { environment } from '../../../environments/environment';
   selector: 'app-home',
   standalone: true,
   imports: [GamemodeSelectComponent, QueueStatusComponent, RouterLink],
+  // app-launcher is a plain custom element (Lit, not Angular) — this is the standard
+  // Angular escape hatch for tags it doesn't know about.
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
     <div class="lobby">
       <header class="lobby-header">
@@ -30,6 +33,9 @@ import { environment } from '../../../environments/environment';
               <span class="avatar" style="background:var(--accent)">{{ username[0].toUpperCase() }}</span>
               <span class="uname">{{ username }}</span>
             </span>
+          }
+          @if (username) {
+            <app-launcher current="strat" theme="dark"></app-launcher>
           }
           @if (authService.isLocalAuth()) {
             <button class="logout-btn" (click)="logout()">Logout</button>
