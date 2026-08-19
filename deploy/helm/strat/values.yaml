@@ -26,6 +26,8 @@ image:
 # Set per-environment in infra.
 ingress:
   host: ""
+  entryPoints: ["web"]
+  # tls: {}   # left absent — set per-environment in infra once ready to serve websecure
 
 # Zitadel's hostname (no scheme — AuthGuard builds https://$AUTH_DOMAIN/oidc/v1/userinfo
 # itself) and this app's own project/client id in it, see 03-auth-zitadel.md.
