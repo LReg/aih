@@ -1,6 +1,31 @@
-# entryPoints/tls are values-driven (default: web only, no tls) so the infra repo can flip
-# this to also serve websecure without a template change — see infra repo's
-# manual-exec/get-rid-of-traefik-proxy-gateway/ Step 1/4.
+# entryPoints/tls are values-driven so the infra repo can flip this to also serve websecure
+# without a template change — see infra repo's manual-exec/get-rid-of-traefik-proxy-gateway/
+# Step 1/4. Deliberately TWO separate IngressRoute objects, not one router spanning both
+# entryPoints with a shared tls block — live-tested 2026-08-19: a single router with
+# entryPoints: [web, websecure] plus a tls block stopped matching on web entirely (404s
+# across production). Splitting them means the tls block only ever touches the websecure
+# router, so web's behavior can never be affected by whether websecure is enabled.
+{{/*
+Mirrors the old app.docker-compose.yml router split exactly: /api (which also carries
+/api/socket.io, see frontend/src/app/service/socket.service.ts) goes to the backend with
+the prefix stripped, everything else is the static frontend. Every line at column 0 so
+nindent controls indentation uniformly wherever this is included.
+*/}}
+{{- define "strat.routes" -}}
+- match: Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/api`)
+  kind: Rule
+  middlewares:
+    - name: {{ .Release.Name }}-strip-api
+  services:
+    - name: {{ .Release.Name }}-backend
+      port: 80
+- match: Host(`{{ .Values.ingress.host }}`)
+  kind: Rule
+  services:
+    - name: {{ .Release.Name }}-frontend
+      port: 80
+{{- end }}
+
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
@@ -16,26 +41,20 @@ metadata:
   name: {{ .Release.Name }}
 spec:
   entryPoints:
-    {{- range .Values.ingress.entryPoints | default (list "web") }}
-    - {{ . }}
-    {{- end }}
+    - web
   routes:
-    # Mirrors the old app.docker-compose.yml router split exactly: /api (which also carries
-    # /api/socket.io, see frontend/src/app/service/socket.service.ts) goes to the backend with
-    # the prefix stripped, everything else is the static frontend.
-    - match: Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/api`)
-      kind: Rule
-      middlewares:
-        - name: {{ .Release.Name }}-strip-api
-      services:
-        - name: {{ .Release.Name }}-backend
-          port: 80
-    - match: Host(`{{ .Values.ingress.host }}`)
-      kind: Rule
-      services:
-        - name: {{ .Release.Name }}-frontend
-          port: 80
-  {{- with .Values.ingress.tls }}
+    {{- include "strat.routes" . | nindent 4 }}
+{{- with .Values.ingress.websecure }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ $.Release.Name }}-websecure
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    {{- include "strat.routes" $ | nindent 4 }}
   tls:
     certResolver: {{ .certResolver }}
-  {{- end }}
+{{- end }}
